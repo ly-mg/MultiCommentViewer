@@ -4,9 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MultiCommentViewerNext
+namespace MultiCommentViewer
 {
-    class Model
+    interface IModel
+    {
+
+    }
+    class Model:IModel
     {
     }
 }

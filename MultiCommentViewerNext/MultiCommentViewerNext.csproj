@@ -54,6 +54,7 @@
     <Compile Include="AppNoStartupUri.xaml.cs">
       <DependentUpon>AppNoStartupUri.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Model.cs" />
     <Compile Include="SplashScreen.xaml.cs">
       <DependentUpon>SplashScreen.xaml</DependentUpon>
     </Compile>

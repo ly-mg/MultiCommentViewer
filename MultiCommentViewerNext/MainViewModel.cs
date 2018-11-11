@@ -32,7 +32,9 @@ namespace MultiCommentViewer
             //throw new NotImplementedException();
             await Task.Delay(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
 		}
+        public MainViewModel(IModel model)
+        {
 
-		
+        }
 	}
 }

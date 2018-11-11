@@ -45,7 +45,8 @@ namespace MultiCommentViewer
         }
         public async Task StartAsync()
         {
-            MainViewModel viewModel = new MainViewModel();
+            var model = new Model();
+            MainViewModel viewModel = new MainViewModel(model);
             viewModel.CloseRequested += viewModel_CloseRequested;
 
             EventHandler windowClosed = (sender, e) =>
