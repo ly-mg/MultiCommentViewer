@@ -37,6 +37,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Windows" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Core" />
@@ -54,24 +55,61 @@
     <Compile Include="AppNoStartupUri.xaml.cs">
       <DependentUpon>AppNoStartupUri.xaml</DependentUpon>
     </Compile>
+    <Compile Include="ConnectionName.cs" />
+    <Compile Include="Converter.cs" />
+    <Compile Include="DynamicOptionsTest.cs" />
+    <Compile Include="IOptions.cs" />
+    <Compile Include="ISitePluginLoader.cs" />
+    <Compile Include="Messages.cs" />
     <Compile Include="Model.cs" />
+    <Compile Include="SitePluginLoaderTest.cs" />
     <Compile Include="SplashScreen.xaml.cs">
       <DependentUpon>SplashScreen.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ViewModel\ConnectionViewModel.cs" />
+    <Compile Include="ViewModel\SiteViewModel.cs" />
+    <Compile Include="ViewModel\UserViewModel.cs" />
+    <Compile Include="Views\CommentDataGrid.xaml.cs">
+      <DependentUpon>CommentDataGrid.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\MainOptionsPanel.xaml.cs">
+      <DependentUpon>MainOptionsPanel.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\MainWindow.xaml.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\OptionsView.xaml.cs">
+      <DependentUpon>OptionsView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\UserView.xaml.cs">
+      <DependentUpon>UserView.xaml</DependentUpon>
     </Compile>
     <Page Include="AppNoStartupUri.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="MainWindow.xaml">
+    <Compile Include="MainViewModel.cs" />
+    <Page Include="SplashScreen.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Compile Include="MainViewModel.cs" />
-    <Compile Include="MainWindow.xaml.cs">
-      <DependentUpon>MainWindow.xaml</DependentUpon>
-      <SubType>Code</SubType>
-    </Compile>
-    <Page Include="SplashScreen.xaml">
+    <Page Include="Views\CommentDataGrid.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\MainOptionsPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\MainWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\OptionsView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\UserView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -102,6 +140,39 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BrowserCookieInterfaces\BrowserCookieInterfaces\BrowserCookieInterfaces.csproj">
+      <Project>{CDBBBF25-AD0C-4EAF-B673-EB0BB198585A}</Project>
+      <Name>BrowserCookieInterfaces</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\CommentViewerCommon\CommentViewerCommon\CommentViewerCommon.csproj">
+      <Project>{18a7a590-4c58-4755-a24c-6eda52e0c3eb}</Project>
+      <Name>CommentViewerCommon</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Common\Common\Common.csproj">
+      <Project>{66d18de1-4d66-41a5-b0e2-47df9975495a}</Project>
+      <Name>Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\IPlugin\IPlugin\Plugin.csproj">
+      <Project>{735cfeee-5b77-4d36-977b-4cd94a6f3cdb}</Project>
+      <Name>Plugin</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ISitePlugin\ISitePlugin\SitePlugin.csproj">
+      <Project>{c13bfdf0-3b93-475f-900e-e7bad97ace3d}</Project>
+      <Name>SitePlugin</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Extended.Wpf.Toolkit">
+      <Version>3.4.0</Version>
+    </PackageReference>
+    <PackageReference Include="MvvmLightLibs">
+      <Version>5.4.1.1</Version>
+    </PackageReference>
+    <PackageReference Include="System.ValueTuple">
+      <Version>4.5.0</Version>
+    </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
