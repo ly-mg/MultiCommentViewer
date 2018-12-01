@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="Class1.cs" />
     <Compile Include="ConnectionSerializerTests.cs" />
+    <Compile Include="ConnectionTests.cs" />
     <Compile Include="ConnectionViewModelTests.cs" />
     <Compile Include="DynamicOptionsTest.cs" />
     <Compile Include="MainViewModelTests.cs" />
@@ -79,6 +80,10 @@
     <ProjectReference Include="$(SolutionDir)\NicoSitePlugin\NicoSitePlugin\NicoSitePlugin.csproj">
       <Project>{2eba5f3c-e50e-4885-9990-b03553e9330d}</Project>
       <Name>NicoSitePlugin</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\BrowserCookieInterfaces\BrowserCookieInterfaces\BrowserCookieInterfaces.csproj">
+      <Project>{CDBBBF25-AD0C-4EAF-B673-EB0BB198585A}</Project>
+      <Name>BrowserCookieInterfaces</Name>
     </ProjectReference>
     <ProjectReference Include="..\CommentViewerCommon\CommentViewerCommon\CommentViewerCommon.csproj">
       <Project>{18A7A590-4C58-4755-A24C-6EDA52E0C3EB}</Project>

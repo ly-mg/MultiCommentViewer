@@ -67,7 +67,7 @@ namespace MultiCommentViewer
             _path = path;
         }
     }
-    public class MainViewModel : CommentDataGridViewModelBase
+    public class MainViewModel : CommentDataGridViewModelBase, IMainViewModel
     {
         #region Commands
         public ICommand ActivatedCommand { get; }
@@ -89,15 +89,14 @@ namespace MultiCommentViewer
 
         #region Fields
         private readonly Dictionary<IPlugin, PluginMenuItemViewModel> _pluginMenuItemDict = new Dictionary<IPlugin, PluginMenuItemViewModel>();
+        private readonly Model _model;
         private readonly ILogger _logger;
         private IPluginManager _pluginManager;
-        private readonly ISitePluginLoader _sitePluginLoader;
-        private readonly IBrowserLoader _browserLoader;
         private readonly IIo _io;
         IOptions _options;
         //IEnumerable<ISiteContext> _siteContexts;
-        IEnumerable<SiteViewModel> _siteVms;
-        IEnumerable<BrowserViewModel> _browserVms;
+        //List<SiteViewModel> _siteVms = new List<SiteViewModel>();
+        //List<BrowserViewModel> _browserVms = new List<BrowserViewModel>();
 
         private readonly Dispatcher _dispatcher;
         Dictionary<ConnectionViewModel, MetadataViewModel> _metaDict = new Dictionary<ConnectionViewModel, MetadataViewModel>();
@@ -135,12 +134,11 @@ namespace MultiCommentViewer
                 var mainOptionsPanel = new MainOptionsPanel();
                 mainOptionsPanel.SetViewModel(new MainOptionsViewModel(_options));
                 list.Add(new MainTabPage("一般", mainOptionsPanel));
-                foreach (var siteVm in _siteVms)
+                foreach (var siteInfo in _model.SitePlugins)
                 {
                     try
                     {
-                        var siteContext = _sitePluginLoader.GetSiteContext(siteVm.Guid);
-                        var tabPanel = siteContext.TabPanel;
+                        var tabPanel = _model.GetSitePluginTabPanel(siteInfo.Guid);
                         if (tabPanel == null)
                             continue;
                         list.Add(tabPanel);
@@ -167,47 +165,39 @@ namespace MultiCommentViewer
             var path = System.IO.Path.Combine(_options.SettingsDirPath, displayName + ".txt");
             return path;
         }
-        private IEnumerable<ISiteContext> GetSiteContexts()
-        {
-            foreach(var siteVm in _siteVms)
-            {
-                yield return _sitePluginLoader.GetSiteContext(siteVm.Guid);
-            }
-        }
         private async void ContentRendered()
         {
             //なんか気持ち悪い書き方だけど一応動く。
             //ここでawaitするとそれ以降が実行されないからこうするしかない。
             try
             {
-                //Observable.Interval()
-                //_optionsLoader.LoadAsync().
-                var a = _sitePluginLoader.LoadSitePlugins(_options, _logger);
-                var siteVms = new List<SiteViewModel>();
-                foreach (var (displayName, guid) in a)
-                {
-                    try
-                    {
-                        var path = GetSiteOptionsPath(displayName);
-                        var siteContext = _sitePluginLoader.GetSiteContext(guid);
-                        siteContext.LoadOptions(path, _io);
-                        siteVms.Add(new SiteViewModel(displayName, guid));
-                    }catch(Exception ex)
-                    {
-                        _logger.LogException(ex);
-                    }
-                }
-                _siteVms = siteVms;
+                //var a = _sitePluginLoader.LoadSitePlugins(_options, _logger);
+                //var siteVms = new List<SiteViewModel>();
+                //foreach (var (displayName, guid) in a)
+                //{
+                //    try
+                //    {
+                //        var path = GetSiteOptionsPath(displayName);
+                //        var siteContext = _sitePluginLoader.GetSiteContext(guid);
+                //        siteContext.LoadOptions(path, _io);
+                //        siteVms.Add(new SiteViewModel(displayName, guid));
+                //    }catch(Exception ex)
+                //    {
+                //        _logger.LogException(ex);
+                //    }
+                //}
+                //_siteVms = siteVms;
 
-                _browserVms = _browserLoader.LoadBrowsers().Select(b => new BrowserViewModel(b));
-                //もしブラウザが無かったらclass EmptyBrowserProfileを使う。
-                if (_browserVms.Count() == 0)
-                {
-                    _browserVms = new List<BrowserViewModel>
-                            {
-                                new BrowserViewModel( new EmptyBrowserProfile()),
-                            };
-                }
+                //_browserVms = _browserLoader.LoadBrowsers().Select(b => new BrowserViewModel(b));
+                ////もしブラウザが無かったらclass EmptyBrowserProfileを使う。
+                //if (_browserVms.Count() == 0)
+                //{
+                //    _browserVms = new List<BrowserViewModel>
+                //            {
+                //                new BrowserViewModel( new EmptyBrowserProfile()),
+                //            };
+                //}
+                _model.Init();
 
                 _pluginManager = new PluginManager(_options);
                 _pluginManager.PluginAdded += PluginManager_PluginAdded;
@@ -236,43 +226,31 @@ namespace MultiCommentViewer
         {
             _connectionSerializerLoader.Save(Connections);
             
-            foreach (var site in GetSiteContexts())
-            {
-                try
-                {
-                    var path = GetSiteOptionsPath(site.DisplayName);
-                    site.SaveOptions(path, _io);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogException(ex);
-                    Debug.WriteLine(ex.Message);
-                }
-            }
+            _model.SaveSitePluginOptions();
             _pluginManager?.OnClosing();
 
-            _sitePluginLoader.Save();
+
         }
         private void RemoveSelectedConnection()
         {
-            try
-            {
-                var toRemove = Connections.Where(conn => conn.IsSelected).ToList();
-                foreach (var conn in toRemove)
-                {
-                    Connections.Remove(conn);
-                    var meta = _metaDict[conn];
-                    _metaDict.Remove(conn);
-                    MetaCollection.Remove(meta);
-                    OnConnectionDeleted(conn.ConnectionName);
-                }
-                //TODO:この接続に関連するコメントも全て消したい
+            //try
+            //{
+            //    var toRemove = Connections.Where(conn => conn.IsSelected).ToList();
+            //    foreach (var conn in toRemove)
+            //    {
+            //        Connections.Remove(conn);
+            //        var meta = _metaDict[conn];
+            //        _metaDict.Remove(conn);
+            //        MetaCollection.Remove(meta);
+            //        OnConnectionDeleted(conn.ConnectionName);
+            //    }
+            //    //TODO:この接続に関連するコメントも全て消したい
 
-            }
-            catch (Exception ex)
-            {
-                _logger.LogException(ex);
-            }
+            //}
+            //catch (Exception ex)
+            //{
+            //    _logger.LogException(ex);
+            //}
         }
         private void SetSystemInfo(string message, InfoType type)
         {
@@ -290,88 +268,90 @@ namespace MultiCommentViewer
                 }
             }
         }
-        private SiteViewModel GetSiteViewModelFromName(string siteName)
-        {
-            foreach(var siteViewModel in _siteVms)
-            {
-                if(siteViewModel.DisplayName == siteName)
-                {
-                    return siteViewModel;
-                }
-            }
-            return null;
-        }
-        private BrowserViewModel GetBrowserViewModelFromName(string browserName)
-        {
-            foreach(var browserViewModel in _browserVms)
-            {
-                if(browserViewModel.DisplayName == browserName)
-                {
-                    return browserViewModel;
-                }
-            }
-            return null;
-        }
+        //private SiteViewModel GetSiteViewModelFromName(string siteName)
+        //{
+        //    foreach(var siteViewModel in _siteVms)
+        //    {
+        //        if(siteViewModel.DisplayName == siteName)
+        //        {
+        //            return siteViewModel;
+        //        }
+        //    }
+        //    return null;
+        //}
+        //private BrowserViewModel GetBrowserViewModelFromName(string browserName)
+        //{
+        //    foreach(var browserViewModel in _browserVms)
+        //    {
+        //        if(browserViewModel.DisplayName == browserName)
+        //        {
+        //            return browserViewModel;
+        //        }
+        //    }
+        //    return null;
+        //}
         private void AddNewConnection(string name, string siteName, string url, string browserName, bool needSave)
         {
-            try
-            {
-                var connectionName = new ConnectionName { Name = name };
-                var connection = new ConnectionViewModel(connectionName, _siteVms, _browserVms, _logger, _sitePluginLoader);
-                connection.Renamed += Connection_Renamed;
-                connection.CommentReceived += Connection_CommentReceived;
-                connection.InitialCommentsReceived += Connection_InitialCommentsReceived;
-                connection.MetadataReceived += Connection_MetadataReceived;
-                connection.SelectedSiteChanged += Connection_SelectedSiteChanged;
-                var site = GetSiteViewModelFromName(siteName);
-                if(site != null)
-                {
-                    connection.SelectedSite = site;
-                }
-                var browser = GetBrowserViewModelFromName(browserName);
-                if(browser != null)
-                {
-                    connection.SelectedBrowser = browser;
-                }
-                connection.InputWithNoAutoSiteSelect = url;
-                connection.NeedSave = needSave;
-                var metaVm = new MetadataViewModel(connectionName);
-                _metaDict.Add(connection, metaVm);
-                MetaCollection.Add(metaVm);
-                Connections.Add(connection);
-                OnConnectionAdded(connection);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogException(ex);
-                Debug.WriteLine(ex.Message);
-                Debugger.Break();
-            }
+            _model.AddConnection(name, url,siteName,browserName,needSave);
+            //try
+            //{
+            //    var connectionName = new ConnectionName { Name = name };
+            //    var connection = new ConnectionViewModel(connectionName, _siteVms, _browserVms, _logger, _model);
+            //    connection.Renamed += Connection_Renamed;
+            //    connection.CommentReceived += Connection_CommentReceived;
+            //    connection.InitialCommentsReceived += Connection_InitialCommentsReceived;
+            //    connection.MetadataReceived += Connection_MetadataReceived;
+            //    connection.SelectedSiteChanged += Connection_SelectedSiteChanged;
+            //    var site = GetSiteViewModelFromName(siteName);
+            //    if (site != null)
+            //    {
+            //        connection.SelectedSite = site;
+            //    }
+            //    var browser = GetBrowserViewModelFromName(browserName);
+            //    if (browser != null)
+            //    {
+            //        connection.SelectedBrowser = browser;
+            //    }
+            //    connection.InputWithNoAutoSiteSelect = url;
+            //    connection.NeedSave = needSave;
+            //    var metaVm = new MetadataViewModel(connectionName);
+            //    _metaDict.Add(connection, metaVm);
+            //    MetaCollection.Add(metaVm);
+            //    Connections.Add(connection);
+            //    OnConnectionAdded(connection);
+            //}
+            //catch (Exception ex)
+            //{
+            //    _logger.LogException(ex);
+            //    Debug.WriteLine(ex.Message);
+            //    Debugger.Break();
+            //}
         }
         private void AddNewConnection()
         {
-            try
-            {
-                var name = GetDefaultName(Connections.Select(c => c.Name));
-                var connectionName = new ConnectionName { Name = name };
-                var connection = new ConnectionViewModel(connectionName, _siteVms, _browserVms, _logger, _sitePluginLoader);
-                connection.Renamed += Connection_Renamed;
-                connection.CommentReceived += Connection_CommentReceived;
-                connection.InitialCommentsReceived += Connection_InitialCommentsReceived;
-                connection.MetadataReceived += Connection_MetadataReceived;
-                connection.SelectedSiteChanged += Connection_SelectedSiteChanged;
-                var metaVm = new MetadataViewModel(connectionName);
-                _metaDict.Add(connection, metaVm);
-                MetaCollection.Add(metaVm);
-                Connections.Add(connection);
-                OnConnectionAdded(connection);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogException(ex);
-                Debug.WriteLine(ex.Message);
-                Debugger.Break();
-            }
+            _model.AddConnection();
+            //try
+            //{
+            //    var name = GetDefaultName(Connections.Select(c => c.Name));
+            //    var connectionName = new ConnectionName { Name = name };
+            //    var connection = new ConnectionViewModel(connectionName, _siteVms, _browserVms, _logger, _model);
+            //    connection.Renamed += Connection_Renamed;
+            //    connection.CommentReceived += Connection_CommentReceived;
+            //    connection.InitialCommentsReceived += Connection_InitialCommentsReceived;
+            //    connection.MetadataReceived += Connection_MetadataReceived;
+            //    connection.SelectedSiteChanged += Connection_SelectedSiteChanged;
+            //    var metaVm = new MetadataViewModel(connectionName);
+            //    _metaDict.Add(connection, metaVm);
+            //    MetaCollection.Add(metaVm);
+            //    Connections.Add(connection);
+            //    OnConnectionAdded(connection);
+            //}
+            //catch (Exception ex)
+            //{
+            //    _logger.LogException(ex);
+            //    Debug.WriteLine(ex.Message);
+            //    Debugger.Break();
+            //}
         }
         /// <summary>
         /// 将来的にSiteContext毎に別のIUserStoreを使い分ける可能性を考えて今のうちに。
@@ -402,16 +382,16 @@ namespace MultiCommentViewer
 
         private void OnConnectionAdded(ConnectionViewModel connection)
         {
-            //TODO:プラグインに通知
-            Debug.WriteLine($"ConnectionAdded:{connection.ConnectionName.Guid}");
+            ////TODO:プラグインに通知
+            //Debug.WriteLine($"ConnectionAdded:{connection.ConnectionName.Guid}");
 
-            var context = connection.GetCurrent();
-            //SetDict(context);
+            //var context = connection.GetCurrent();
+            ////SetDict(context);
 
-            if(SelectedConnection == null)
-            {
-                SelectedConnection = connection;
-            }
+            //if(SelectedConnection == null)
+            //{
+            //    SelectedConnection = connection;
+            //}
         }
         //private void SetDict(ConnectionContext context)
         //{
@@ -494,7 +474,7 @@ namespace MultiCommentViewer
                 {
                     foreach (var comment in e)
                     {
-                        AddComment(comment, connectionViewModel.ConnectionName);
+                        //AddComment(comment, connectionViewModel.ConnectionName);
                     }
                 }), DispatcherPriority.Normal);
             }
@@ -522,7 +502,7 @@ namespace MultiCommentViewer
                     //    _userDict.Add(comment.UserId, uvm);
                     //}
                     //comment.User = uvm.User;
-                    AddComment(comment, connectionViewModel.ConnectionName);
+                    //AddComment(comment, connectionViewModel.ConnectionName);
                     //uvm.Comments.Add(comment);
                 }), DispatcherPriority.Normal);
                 if (IsComment(e.MessageType))
@@ -801,6 +781,22 @@ namespace MultiCommentViewer
         }
         #endregion
 
+        public event EventHandler<EventArgs> CloseRequested;
+        public void RequestClose()
+        {
+            OnCloseRequested(EventArgs.Empty);
+        }
+
+        protected virtual void OnCloseRequested(EventArgs e)
+        {
+            CloseRequested?.Invoke(this, e);
+        }
+        public async Task InitializeAsync()
+        {
+            //use this to test the exception handling
+            //throw new NotImplementedException();
+            await Task.CompletedTask;//.Delay(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+        }
         public MainViewModel():base(new DynamicOptionsTest())
         {
             if (IsInDesignMode)
@@ -812,18 +808,24 @@ namespace MultiCommentViewer
                 throw new NotSupportedException();
             }
         }
+        protected virtual IIo CreateIo()
+        {
+            return new IOTest();
+        }
         [GalaSoft.MvvmLight.Ioc.PreferredConstructor]
-        public MainViewModel(IIo io, ILogger logger, IOptions options, ISitePluginLoader sitePluginLoader, IBrowserLoader browserLoader)
+        public MainViewModel(Model model, ILogger logger, IOptions options)
             :base(options)
         {
-            _io = io;
+            _io = CreateIo();
             _dispatcher = Dispatcher.CurrentDispatcher;
             
             _options = options;
-
+            _model = model;
+            //model.SitePluginLoaded += Model_SitePluginLoaded;
+            //model.BrowserProfileLoaded += Model_BrowserProfileLoaded;
+            model.ConnectionAdded += Model_ConnectionAdded;
             _logger = logger;
-            _sitePluginLoader = sitePluginLoader;
-            _browserLoader = browserLoader;
+            //_browserVms = new List<BrowserViewModel>();
 
             Comments = CollectionViewSource.GetDefaultView(_comments);
 
@@ -883,6 +885,23 @@ namespace MultiCommentViewer
             };
             RaisePropertyChanged(nameof(Topmost));
         }
+
+        private void Model_ConnectionAdded(object sender, Connection e)
+        {
+            var connection = e;
+            var connectionViewModel = new ConnectionViewModel(connection, _logger);
+            Connections.Add(connectionViewModel);
+        }
+
+        //private void Model_SitePluginLoaded(object sender, SitePluginInfo e)
+        //{
+        //    _siteVms.Add(new SiteViewModel(e.DisplayName, e.Guid));
+        //}
+
+        //private void Model_BrowserProfileLoaded(object sender, ryu_s.BrowserCookie.IBrowserProfile e)
+        //{
+        //    _browserVms.Add(new BrowserViewModel(e));
+        //}
 
         private async void PluginManager_PluginAdded(object sender, IPlugin e)
         {

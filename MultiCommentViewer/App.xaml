@@ -8,7 +8,6 @@
              StartupUri="Views\MainWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
-            <vm:ViewModelLocator x:Key="Locator" d:IsDataSource="True" xmlns:vm="clr-namespace:MultiCommentViewer.ViewModels" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -7,7 +7,7 @@ namespace MultiCommentViewer
     {
         public string Path => "";
 
-        public string ProfileName => "無し";
+        public string ProfileName => "(無し)";
 
         public BrowserType Type { get { return BrowserType.Unknown; } }
 

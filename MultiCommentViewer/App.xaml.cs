@@ -50,7 +50,7 @@ namespace MultiCommentViewer
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 
             
-            io = new Test.IOTest();
+            io = new IOTest();
 
             //OptionsはMainViewModelのContentRendered()で読み込みたい。しかし、その前にConnectionNameWidth等が参照されるため現状ではコンストラクタ以前に読み込む必要がある。
             //実行される順番は
@@ -78,10 +78,10 @@ namespace MultiCommentViewer
             IBrowserLoader browserLoader = new BrowserLoader(_logger);
 
             
-            var mainViewModel = new MainViewModel(io, _logger, options, sitePluginLoader,browserLoader);
-            var resource = Application.Current.Resources;
-            var locator = resource["Locator"] as ViewModels.ViewModelLocator;
-            locator.Main = mainViewModel;
+            //var mainViewModel = new MainViewModel(io, _logger, options, sitePluginLoader,browserLoader);
+            //var resource = Application.Current.Resources;
+            //var locator = resource["Locator"] as ViewModels.ViewModelLocator;
+            //locator.Main = mainViewModel;
         }
         protected override void OnExit(ExitEventArgs e)
         {

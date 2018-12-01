@@ -9,7 +9,6 @@
         xmlns:i="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"
         xmlns:command="clr-namespace:GalaSoft.MvvmLight.Command;assembly=GalaSoft.MvvmLight.Platform"
         mc:Ignorable="d"
-        DataContext="{Binding Main, Source={StaticResource Locator}}"
         d:DataContext="{d:DesignInstance local:MainViewModel, IsDesignTimeCreatable=True}"
         Title="{Binding Title}" Topmost="{Binding Topmost}"
         Height="{Binding MainViewHeight, Mode=TwoWay}" Width="{Binding MainViewWidth, Mode=TwoWay}"

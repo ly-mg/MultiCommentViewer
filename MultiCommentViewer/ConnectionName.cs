@@ -41,4 +41,23 @@ namespace MultiCommentViewer
         }
         #endregion
     }
+    public class ConnectionName2
+    {
+        public event EventHandler NameChanged;
+        public Guid Guid { get; }
+        private string _name;
+        public string Name
+        {
+            get { return _name; }
+            set
+            {
+                _name = value;
+                NameChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+        public ConnectionName2()
+        {
+            Guid = Guid.NewGuid();
+        }
+    }
 }
