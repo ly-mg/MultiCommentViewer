@@ -72,9 +72,15 @@
     <Compile Include="AppNoStartupUri.xaml.cs">
       <DependentUpon>AppNoStartupUri.xaml</DependentUpon>
     </Compile>
+    <Compile Include="CommentReceivedEventArgs.cs" />
     <Compile Include="Connection.cs" />
+    <Compile Include="CurrentBrowserEventArgs.cs" />
+    <Compile Include="CurrentSiteEventArgs.cs" />
+    <Compile Include="EmptySitePlugin.cs" />
     <Compile Include="Exceptions.cs" />
+    <Compile Include="IConnection.cs" />
     <Compile Include="Model.cs" />
+    <Compile Include="NameChangedEventArgs.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="SplashScreen.xaml.cs">
       <DependentUpon>SplashScreen.xaml</DependentUpon>

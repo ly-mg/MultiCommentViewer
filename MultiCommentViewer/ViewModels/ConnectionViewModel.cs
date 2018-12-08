@@ -18,6 +18,13 @@ using ryu_s.BrowserCookie;
 
 namespace MultiCommentViewer
 {
+    public static class SitePluginCompanionObject
+    {
+        public static SitePluginInfo GetSitePluginInfo(this  ISiteContext siteContext)
+        {
+            return new SitePluginInfo(siteContext.DisplayName, siteContext.Guid);
+        }
+    }
     public class ConnectionContext
     {
         public ConnectionName ConnectionName { get; set; }
@@ -68,12 +75,12 @@ namespace MultiCommentViewer
         {
             get
             {
-                var SelectedSiteGuid = _connection.SelectedSiteGuid;
+                var SelectedSiteGuid = _connection.CurrentSiteGuid;
                 return GetSiteViewModel(SelectedSiteGuid);
             }
             set
             {
-                _connection.SelectedSiteGuid = value.Guid;
+                _connection.CurrentSiteGuid = value.Guid;
                 //_model.SetCurrentSite(Guid, value.Guid);
                 //if (_selectedSite == value)
                 //    return;
@@ -234,7 +241,6 @@ namespace MultiCommentViewer
             RaisePropertyChanged(nameof(CanConnect));
         }
 
-        private BrowserViewModel _selectedBrowser;
         public BrowserViewModel SelectedBrowser
         {
             get
@@ -255,12 +261,8 @@ namespace MultiCommentViewer
         /// </summary>
         public bool NeedSave
         {
-            get => _needSave;
-            set
-            {
-                _needSave = value;
-                RaisePropertyChanged();
-            }
+            get => _connection.NeedSave;
+            set => _connection.NeedSave = value;
         }
         public string Input
         {
@@ -282,40 +284,33 @@ namespace MultiCommentViewer
         //    return context;
         //}
 
-        private async void Connect()
+        private void Connect()
         {
-            try
-            {
-                //接続中は削除できないように選択を外す
-                IsSelected = false;
-                var input = Input;
-                var browser = SelectedBrowser.Browser;
-                await _commentProvider.ConnectAsync(input, browser);
+            //try
+            //{
+            //    ////接続中は削除できないように選択を外す
+            //    //IsSelected = false;
+            //    //var input = Input;
+            //    //var browser = SelectedBrowser.Browser;
+            //    //await _commentProvider.ConnectAsync(input, browser);
 
 
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex.Message);
-                _logger.LogException(ex);
-            }
+
+            //}
+            //catch (Exception ex)
+            //{
+            //    Debug.WriteLine(ex.Message);
+            //    _logger.LogException(ex);
+            //}
+            _connection.Connect();
         }
         private void Disconnect()
         {
-            try
-            {
-                _commentProvider.Disconnect();
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex.Message);
-                _logger.LogException(ex);
-            }
+            _connection.Disconnect();
         }
         string _beforeName;
-        private readonly Connection _connection;
+        private readonly IConnection _connection;
         private readonly ILogger _logger;
-        private readonly Model _model;
         //private readonly IEnumerable<ISiteContext> _sites;
         private readonly Dictionary<Guid, SiteViewModel> _siteVmDict = new Dictionary<Guid, SiteViewModel>();
         /// <summary>
@@ -323,7 +318,7 @@ namespace MultiCommentViewer
         /// </summary>
         //public Guid Guid { get; }
         private readonly Dispatcher _dispatcher;
-        public ConnectionViewModel(Connection connection, ILogger logger)
+        public ConnectionViewModel(IConnection connection, ILogger logger)
         {
             _dispatcher = Dispatcher.CurrentDispatcher;
             _connection = connection;
@@ -334,9 +329,25 @@ namespace MultiCommentViewer
             _connection.SiteAdded += Connection_SiteAdded;
             _connection.SiteRemoved += Connection_SiteRemoved;
             _connection.BrowserAdded += Connection_BrowserAdded;
-            //_connection.NameChanged += Connection_NameChanged;
+            _connection.NameChanged += Connection_NameChanged;
             _connection.CurrentBrowserChanged += Connection_CurrentBrowserChanged;
             _connection.CurrentSiteChanged += Connection_CurrentSiteChanged;
+            _connection.CanConnectChanged += (s, e) =>
+            {
+                RaisePropertyChanged(nameof(CanConnect));
+            };
+            _connection.CanDisconnectChanged += (s, e) =>
+            {
+                RaisePropertyChanged(nameof(CanDisconnect));
+            };
+
+            //ConnectionやModelにSitePluginが読み込まれるのはこのクラスを作成するよりも前。
+            //よってAddedイベントでは最初のSitePlugin読み込みは検知できない。
+            //読み込み済みのSitePluginを自分で登録する
+            foreach (var site in connection.Sites)
+            {
+                AddSitePlugin(site.GetSitePluginInfo());
+            }
             //_model.ConnectionNameChanged += Model_ConnectionNameChanged;
             //_model.CurrentSiteChanged += Model_CurrentSiteChanged;
             //_model.CurrentBrowserChanged += Model_CurrentBrowserChanged;
@@ -387,6 +398,11 @@ namespace MultiCommentViewer
             //}
             //var selectedSiteGuid = _model.GetSelectedSite(Guid);
             //SelectedSite = _dict[selectedSiteGuid];
+        }
+
+        private void Connection_NameChanged(object sender, NameChangedEventArgs e)
+        {
+            RaisePropertyChanged(nameof(Name));
         }
 
         private void Connection_SiteRemoved(object sender, Guid e)

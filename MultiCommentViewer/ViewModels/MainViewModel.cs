@@ -257,17 +257,17 @@ namespace MultiCommentViewer
             var info = new SystemInfoCommentViewModel(_options, message, type);
             //AddComment(info, )
         }
-        private string GetDefaultName(IEnumerable<string> existingNames)
-        {
-            for (var n = 1; ; n++)
-            {
-                var testName = "#" + n;
-                if (!existingNames.Contains(testName))
-                {
-                    return testName;
-                }
-            }
-        }
+        //private string GetDefaultName(IEnumerable<string> existingNames)
+        //{
+        //    for (var n = 1; ; n++)
+        //    {
+        //        var testName = "#" + n;
+        //        if (!existingNames.Contains(testName))
+        //        {
+        //            return testName;
+        //        }
+        //    }
+        //}
         //private SiteViewModel GetSiteViewModelFromName(string siteName)
         //{
         //    foreach(var siteViewModel in _siteVms)
@@ -453,7 +453,7 @@ namespace MultiCommentViewer
         }
         #endregion //Methods
         
-        private void AddComment(ICommentViewModel cvm, ConnectionName connectionName)
+        private void AddComment(ICommentViewModel cvm, ConnectionName2 connectionName)
         {
             if(cvm is IInfoCommentViewModel info && info.Type > _options.ShowingInfoLevel)
             {
@@ -799,14 +799,14 @@ namespace MultiCommentViewer
         }
         public MainViewModel():base(new DynamicOptionsTest())
         {
-            if (IsInDesignMode)
-            {
+            //if (IsInDesignMode)
+            //{
 
-            }
-            else
-            {
-                throw new NotSupportedException();
-            }
+            //}
+            //else
+            //{
+            //    throw new NotSupportedException();
+            //}
         }
         protected virtual IIo CreateIo()
         {
@@ -824,10 +824,13 @@ namespace MultiCommentViewer
             //model.SitePluginLoaded += Model_SitePluginLoaded;
             //model.BrowserProfileLoaded += Model_BrowserProfileLoaded;
             model.ConnectionAdded += Model_ConnectionAdded;
+            model.CommentReceived += Model_CommentReceived;
+            model.MetadataUpdated += Model_MetadataUpdated;
             _logger = logger;
             //_browserVms = new List<BrowserViewModel>();
 
             Comments = CollectionViewSource.GetDefaultView(_comments);
+            BindingOperations.EnableCollectionSynchronization(this.Comments, new object());
 
             MainViewContentRenderedCommand = new RelayCommand(ContentRendered);
             MainViewClosingCommand = new RelayCommand<CancelEventArgs>(Closing);
@@ -886,13 +889,44 @@ namespace MultiCommentViewer
             RaisePropertyChanged(nameof(Topmost));
         }
 
-        private void Model_ConnectionAdded(object sender, Connection e)
+        private void Model_MetadataUpdated(object sender, MetadataUpdatedEventArgs e)
+        {
+            var connectionName = e.ConnectionName;
+            var metaVm = _metaVmDict[connectionName];
+            var meta = e.Metadata;
+
+            if (meta.Title != null)
+                metaVm.Title = meta.Title;
+            if (meta.Active != null)
+                metaVm.Active = meta.Active;
+            if (meta.CurrentViewers != null)
+                metaVm.CurrentViewers = meta.CurrentViewers;
+            if (meta.TotalViewers != null)
+                metaVm.TotalViewers = meta.TotalViewers;
+            if (meta.Elapsed != null)
+                metaVm.Elapsed = meta.Elapsed;
+        }
+
+        private async void Model_CommentReceived(object sender, CommentReceivedEventArgs e)
+        {
+            await _dispatcher.BeginInvoke((Action)(() =>
+            {
+                AddComment(e.CommentContext, e.ConnectionName);
+            }), DispatcherPriority.Normal);
+        }
+
+        private void Model_ConnectionAdded(object sender, IConnection e)
         {
             var connection = e;
             var connectionViewModel = new ConnectionViewModel(connection, _logger);
             Connections.Add(connectionViewModel);
+
+            var metadataViewModel = new MetadataViewModel(connection.ConnectionName);
+            _metaVmDict.Add(connection.ConnectionName, metadataViewModel);
+            MetaCollection.Add(metadataViewModel);
         }
 
+        Dictionary<ConnectionName2, MetadataViewModel> _metaVmDict = new Dictionary<ConnectionName2, MetadataViewModel>();
         //private void Model_SitePluginLoaded(object sender, SitePluginInfo e)
         //{
         //    _siteVms.Add(new SiteViewModel(e.DisplayName, e.Guid));

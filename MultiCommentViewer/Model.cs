@@ -10,26 +10,6 @@ using System.Threading.Tasks;
 
 namespace MultiCommentViewer
 {
-    public class CurrentSiteEventArgs : EventArgs
-    {
-        public Guid ConnectionGuid { get; }
-        public Guid CurrentSiteGuid { get; }
-        public CurrentSiteEventArgs(Guid connectionGuid, Guid siteGuid)
-        {
-            ConnectionGuid = connectionGuid;
-            CurrentSiteGuid = siteGuid;
-        }
-    }
-    public class CurrentBrowserEventArgs : EventArgs
-    {
-        public IBrowserProfile BrowserProfile { get; }
-        public Guid ConnectionGuid { get; }
-        public CurrentBrowserEventArgs(Guid connectionGuid, IBrowserProfile browserProfile)
-        {
-            ConnectionGuid = connectionGuid;
-            BrowserProfile = browserProfile;
-        }
-    }
     public interface IModel
     {
         //2018/11/26記
@@ -64,33 +44,39 @@ namespace MultiCommentViewer
 
         event EventHandler<SitePluginInfo> SitePluginLoaded;
         event EventHandler<IBrowserProfile> BrowserProfileLoaded;
+        event EventHandler<MetadataUpdatedEventArgs> MetadataUpdated;
         void Init();
         IReadOnlyList<SitePluginInfo> SitePlugins { get; }
         IReadOnlyList<IBrowserProfile> BrowserProfiles { get; }
-
+        IReadOnlyList<IConnection> Connections { get; }
         //戻り値があるメソッド。MVVMの責務の分離ルールを侵害してしまっているだろうか。一応Modelオブジェクトの中身は変更しておらず、単なるステートの取得なのだが。
         //C++であればメソッドにconstを付けているところ。
-        IOptionsTabPage GetSitePluginTabPanel(Guid guid);
+        IOptionsTabPage GetSitePluginTabPanel(Guid siteContextGuid);
         void SaveSitePluginOptions();
         void SetInput(object connection, string value);
         void AddConnection();
+
+
     }
     public class Model
     {
         public event EventHandler<SitePluginInfo> SitePluginLoaded;
         public event EventHandler<IBrowserProfile> BrowserProfileLoaded;
         //public event EventHandler<Guid> ConnectionNameChanged;
-        public event EventHandler<Connection> ConnectionAdded;
-
-        static readonly EmptySitePlugin _emptySitePlugin = new EmptySitePlugin();
-        static readonly EmptyBrowserProfile _emptyBrowserProfile = new EmptyBrowserProfile();
+        public event EventHandler<IConnection> ConnectionAdded;
+        public event EventHandler<Guid> ConnectionRemoved;
+        public event EventHandler<CommentReceivedEventArgs> CommentReceived;
+        public event EventHandler<MetadataUpdatedEventArgs> MetadataUpdated;
+        //static readonly EmptySitePlugin _emptySitePlugin = new EmptySitePlugin();
+        //static readonly EmptyBrowserProfile _emptyBrowserProfile = new EmptyBrowserProfile();
+        //private SitePluginInfo _defaultSitePluginInfo = new SitePluginInfo(_emptySitePlugin.DisplayName, _emptySitePlugin.Guid);
+        //private IBrowserProfile _defaultBrowser = _emptyBrowserProfile;
         private string GetSiteOptionsPath(string displayName)
         {
             var path = System.IO.Path.Combine(_options.SettingsDirPath, displayName + ".txt");
             return path;
         }
-        private SitePluginInfo _defaultSitePluginInfo =new SitePluginInfo(_emptySitePlugin.DisplayName,_emptySitePlugin.Guid);
-        private IBrowserProfile _defaultBrowser = _emptyBrowserProfile;
+
         public void Init()
         {
             //サイトプラグインを読み込む
@@ -102,10 +88,10 @@ namespace MultiCommentViewer
                 {
                     var path = GetSiteOptionsPath(sitePluginInfo.DisplayName);
                     _sitePluginLoader.LoadSiteOptions(sitePluginInfo.Guid, path, _io);
-                    if(_defaultSitePluginInfo.Equals(new Guid()))
-                    {
-                        _defaultSitePluginInfo = new SitePluginInfo(sitePluginInfo.DisplayName, sitePluginInfo.Guid);
-                    }
+                    //if(_defaultSitePluginInfo.Equals(new Guid()))
+                    //{
+                    //    _defaultSitePluginInfo = new SitePluginInfo(sitePluginInfo.DisplayName, sitePluginInfo.Guid);
+                    //}
                     _sitePlugins.Add(sitePluginInfo);
                     SitePluginLoaded?.Invoke(this, new SitePluginInfo(sitePluginInfo.DisplayName, sitePluginInfo.Guid));
                 }
@@ -122,10 +108,10 @@ namespace MultiCommentViewer
             {
                 foreach(var browser in browsers)
                 {
-                    if(_defaultBrowser == null)
-                    {
-                        _defaultBrowser = browser;
-                    }
+                    //if(_defaultBrowser == null)
+                    //{
+                    //    _defaultBrowser = browser;
+                    //}
                     _browserProfiles.Add(browser);
                     BrowserProfileLoaded?.Invoke(this, browser);
                 }
@@ -147,13 +133,13 @@ namespace MultiCommentViewer
         public Guid GetSelectedSite(Guid connectionGuid)
         {
             var connection = GetConnection(connectionGuid);
-            return connection.SelectedSiteGuid;
+            return connection.CurrentSiteGuid;
         }
 
         internal void AddBrowserProfile(IBrowserProfile browserProfile)
         {
             _browserProfiles.Add(browserProfile);
-            foreach(var connection in Connections)
+            foreach(var connection in _Connections)
             {
                 connection.AddBrowser(browserProfile);
             }
@@ -162,7 +148,7 @@ namespace MultiCommentViewer
         internal void AddSitePlugin(ISiteContext siteContext)
         {
             _sitePlugins.Add(siteContext);
-            foreach (var connection in Connections)
+            foreach (var connection in _Connections)
             {
                 connection.AddSiteContext(siteContext);
             }
@@ -194,15 +180,16 @@ namespace MultiCommentViewer
         //    CurrentBrowserChanged?.Invoke(this, new CurrentBrowserEventArgs(connectionGuid, browserProfile));            
         //}
 
-        private Connection GetConnection(Guid guid1)
+        private IConnection GetConnection(Guid guid1)
         {
-            foreach(var connection in Connections)
+            foreach(var connection in _Connections)
             {
                 if (connection.Guid.Equals(guid1))
                 {
                     return connection;
                 }
             }
+            //guidは必ず一致するものが無ければならない。無ければバグ
             throw new BugException("")
             {
                  Details = $"guid={guid1}",
@@ -214,7 +201,7 @@ namespace MultiCommentViewer
             return new BrowserLoader(_logger);
         }
 
-        public IOptionsTabPage GetSitePluginTabPanel(Guid guid)
+        public IOptionsTabPage GetSitePluginTabPanel(Guid siteContextGuid)
         {
             throw new NotImplementedException();
         }
@@ -236,11 +223,11 @@ namespace MultiCommentViewer
         }
         public void AddConnection()
         {
-            var name = GetDefaultName(Connections.Select(c => c.Name));
+            var name = GetDefaultName(_Connections.Select(c => c.Name));
             SitePluginInfo sitePluginInfo;
             if(_sitePlugins.Count == 0)
             {
-                sitePluginInfo = _defaultSitePluginInfo;
+                sitePluginInfo = null;
             }
             else
             {
@@ -250,53 +237,67 @@ namespace MultiCommentViewer
             IBrowserProfile browser;
             if(_browserProfiles.Count == 0)
             {
-                browser = _defaultBrowser;
+                browser = null;
             }
             else
             {
                 browser = _browserProfiles[0];
             }
-            AddConnection(name, "", sitePluginInfo.DisplayName, browser.ProfileName, false);
+            AddConnection(name, "", sitePluginInfo?.DisplayName, browser?.ProfileName, false);
         }
+        public void RemoveConnection(Guid connectionGuid)
+        {
+            var connection = GetConnection(connectionGuid);
+            connection.CommentReceived -= Connection_CommentReceived;
+            connection.MetadataUpdated -= Connection_MetadataUpdated;
+
+
+            _Connections.Remove(connection);
+            ConnectionRemoved?.Invoke(this, connectionGuid);
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="url"></param>
+        /// <param name="siteName">null可</param>
+        /// <param name="browserName">null可</param>
+        /// <param name="needSave"></param>
         internal void AddConnection(string name, string url, string siteName, string browserName, bool needSave)
         {
-            var connection = new Connection()
+            var connection = new Connection(_logger)
             {
                 Name=name,
             };
+            connection.CommentReceived += Connection_CommentReceived;
+            connection.MetadataUpdated += Connection_MetadataUpdated;
             connection.SetInput(url, false);
-            Connections.Add(connection);
+            _Connections.Add(connection);
             ConnectionAdded?.Invoke(this, connection);
-            if (_sitePlugins.Count == 0)
-            {
-                connection.AddSiteContext(_emptySitePlugin);
-            }
-            else
+            if (_sitePlugins.Count > 0)
             {
                 connection.AddSiteContext(_sitePlugins);
             }
-            if(_browserProfiles.Count == 0)
-            {
-                connection.AddBrowser(_emptyBrowserProfile);
-            }
-            else
+            if(_browserProfiles.Count > 0)
             {
                 connection.AddBrowser(_browserProfiles);
             }
-
             
-            IBrowserProfile browserProfile = _defaultBrowser;
+            IBrowserProfile browserProfile = null;
             foreach(var browser in _browserProfiles)
             {
-                if(browser.ProfileName == browserName)
+                if(GetBrowserDisplayName(browser) == browserName)
                 {
                     browserProfile = browser;
                     break;
                 }
             }
-            connection.CurrentBrowserProfile = browserProfile;
+            if (browserProfile != null)
+            {
+                connection.CurrentBrowserProfile = browserProfile;
+            }
 
-            ISiteContext sitePlugin = _emptySitePlugin;
+            ISiteContext sitePlugin = null;
             foreach (var site in _sitePlugins)
             {
                 if (site.DisplayName == siteName)
@@ -305,9 +306,37 @@ namespace MultiCommentViewer
                     break;
                 }
             }
-            connection.SelectedSiteGuid = sitePlugin.Guid;
+            if (sitePlugin != null)
+            {
+                connection.CurrentSiteGuid = sitePlugin.Guid;
+            }
         }
-        protected virtual List<Connection> Connections { get; } = new List<Connection>();
+
+        private void Connection_MetadataUpdated(object sender, IMetadata e)
+        {
+            var connection = sender as Connection;
+            MetadataUpdated?.Invoke(this, new MetadataUpdatedEventArgs(e, connection.ConnectionName));
+        }
+
+        private string GetBrowserDisplayName(IBrowserProfile browserProfile)
+        {
+            if (string.IsNullOrEmpty(browserProfile.ProfileName))
+            {
+                return $"{browserProfile.Type}";
+            }
+            else
+            {
+                return $"{browserProfile.Type}({browserProfile.ProfileName})";
+            }
+        }
+        private void Connection_CommentReceived(object sender, ICommentViewModel e)
+        {
+            var connection = sender as Connection;
+            CommentReceived?.Invoke(this, new CommentReceivedEventArgs(e, connection.ConnectionName));
+        }
+
+        protected virtual List<IConnection> _Connections { get; } = new List<IConnection>();
+        public IReadOnlyList<IConnection> Connections => _Connections;
 
         public Model(IOptions options, ILogger logger, IIo io, ISitePluginLoader sitePluginLoader)
         {
@@ -340,20 +369,5 @@ namespace MultiCommentViewer
         }
 
 
-    }
-    interface IConnection
-    {
-
-    }
-
-    public class NameChangedEventArgs:EventArgs
-    {
-        public string OldName{ get; }
-        public string NewName { get; }
-        public NameChangedEventArgs(string oldName, string newName)
-        {
-            OldName = oldName;
-            NewName = newName;
-        }
     }
 }

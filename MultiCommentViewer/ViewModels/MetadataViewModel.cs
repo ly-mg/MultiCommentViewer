@@ -69,8 +69,8 @@ namespace MultiCommentViewer
         }
 
         public string ConnectionName => _connectionName.Name;
-        private readonly ConnectionName _connectionName;
-        public MetadataViewModel(ConnectionName connectionName)
+        private readonly ConnectionName2 _connectionName;
+        public MetadataViewModel(ConnectionName2 connectionName)
         {
             _connectionName = connectionName;
             Title = "-";
@@ -79,15 +79,16 @@ namespace MultiCommentViewer
             TotalViewers = "-";
             Active = "-";
             Others = "-";
-            _connectionName.PropertyChanged += (s, e) =>
-            {
-                switch (e.PropertyName)
-                {
-                    case nameof(_connectionName.Name):
-                        base.RaisePropertyChanged(nameof(ConnectionName));
-                        break;
-                }
-            };
+            _connectionName.NameChanged += ConnectionName_NameChanged;
+        }
+        ~MetadataViewModel()
+        {
+            _connectionName.NameChanged -= ConnectionName_NameChanged;
+        }
+
+        private void ConnectionName_NameChanged(object sender, System.EventArgs e)
+        {
+            RaisePropertyChanged(nameof(ConnectionName));
         }
     }
 }

@@ -15,22 +15,22 @@ namespace MultiCommentViewer.Test
         Dictionary<Guid, ISiteContext> _dict = new Dictionary<Guid, ISiteContext>();
         public void LoadSitePlugins(ICommentOptions options, ILogger logger)
         {
-            //var list = new List<ISiteContext>
-            //{
-            //    new YouTubeLiveSitePlugin.Test2.YouTubeLiveSiteContext(options, new YouTubeLiveSitePlugin.Test2.YouTubeLiveServer(), logger),
-            //    new OpenrecSitePlugin.OpenrecSiteContext(options, logger),
-            //    new TwitchSitePlugin.TwitchSiteContext(options,new TwitchSitePlugin.TwitchServer(), logger),
-            //    new NicoSitePlugin.NicoSiteContext(options,new NicoSitePlugin.DataSource(), (addr,port,size,buffer)=> new NicoSitePlugin.StreamSocket(addr,port,size,buffer), logger),
-            //    new TwicasSitePlugin.TwicasSiteContext(options,logger),
-            //    new LineLiveSitePlugin.LineLiveSiteContext(options,new LineLiveSitePlugin.LineLiveServer(), logger),
-            //    new WhowatchSitePlugin.WhowatchSiteContext(options, logger),
-            //    new MirrativSitePlugin.MirrativSiteContext(options,new MirrativSitePlugin.MirrativServer(), logger),
-            //};
-            //foreach(var site in list)
-            //{
-            //    site.Init();
-            //    _dict.Add(site.Guid, site);
-            //}
+            var list = new List<ISiteContext>
+            {
+                new YouTubeLiveSitePlugin.Test2.YouTubeLiveSiteContext(options, new YouTubeLiveSitePlugin.Test2.YouTubeLiveServer(), logger),
+                new OpenrecSitePlugin.OpenrecSiteContext(options, logger),
+                new TwitchSitePlugin.TwitchSiteContext(options,new TwitchSitePlugin.TwitchServer(), logger),
+                new NicoSitePlugin.NicoSiteContext(options,new NicoSitePlugin.DataSource(), (addr,port,size,buffer)=> new NicoSitePlugin.StreamSocket(addr,port,size,buffer), logger),
+                new TwicasSitePlugin.TwicasSiteContext(options,logger),
+                new LineLiveSitePlugin.LineLiveSiteContext(options,new LineLiveSitePlugin.LineLiveServer(), logger),
+                new WhowatchSitePlugin.WhowatchSiteContext(options, logger),
+                new MirrativSitePlugin.MirrativSiteContext(options,new MirrativSitePlugin.MirrativServer(), logger),
+            };
+            foreach (var site in list)
+            {
+                site.Init();
+                _dict.Add(site.Guid, site);
+            }
         }
         public void Save()
         {
@@ -78,7 +78,8 @@ namespace MultiCommentViewer.Test
 
         public void LoadSiteOptions(Guid guid, string path, IIo io)
         {
-
+            var siteContext = GetSiteContext(guid);
+            siteContext.LoadOptions(path, io);
         }
     }
 }

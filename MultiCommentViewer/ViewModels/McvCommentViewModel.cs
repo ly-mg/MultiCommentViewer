@@ -12,7 +12,7 @@ namespace MultiCommentViewer
     {
         private readonly ICommentViewModel _cvm;
 
-        public McvCommentViewModel(ICommentViewModel cvm, ConnectionName connectionName)
+        public McvCommentViewModel(ICommentViewModel cvm, ConnectionName2 connectionName)
         {
             _cvm = cvm;
             _cvm.PropertyChanged += (s, e) =>
@@ -41,18 +41,13 @@ namespace MultiCommentViewer
                 }
             };
             ConnectionName = connectionName;
-            ConnectionName.PropertyChanged += (s, e) =>
+            ConnectionName.NameChanged += (s, e) =>
             {
-                switch (e.PropertyName)
-                {
-                    case nameof(ConnectionName.Name):
-                        RaisePropertyChanged(nameof(connectionName));
-                        break;
-                }
+                RaisePropertyChanged(nameof(ConnectionName));
             };
         }
 
-        public ConnectionName ConnectionName { get; }
+        public ConnectionName2 ConnectionName { get; }
 
         public IEnumerable<IMessagePart> NameItems => _cvm.NameItems;
 

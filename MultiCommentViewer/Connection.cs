@@ -1,88 +1,27 @@
-﻿using ryu_s.BrowserCookie;
+﻿using Common;
+using ryu_s.BrowserCookie;
 using SitePlugin;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Windows.Controls;
 
 namespace MultiCommentViewer
 {
-    class EmptySitePlugin : ISiteContext
+    class Connection:IConnection
     {
-        public Guid Guid => new Guid("6B07E5E8-DFFC-45A9-855A-A6F646B56B2B");
+        static readonly IBrowserProfile _emptyBrowserProfile=new EmptyBrowserProfile();
+        static readonly ISiteContext _emptySiteContext = new EmptySitePlugin();
+        private readonly ILogger _logger;
 
-        public string DisplayName => "(無し)";
-
-        public IOptionsTabPage TabPanel => null;
-
-        public ICommentProvider CreateCommentProvider()
-        {
-            return new EmptyCommentProvider();
-        }
-        class EmptyCommentProvider : ICommentProvider
-        {
-            public bool CanConnect => false;
-
-            public bool CanDisconnect => false;
-
-            public event EventHandler<ConnectedEventArgs> Connected;
-            public event EventHandler<List<ICommentViewModel>> InitialCommentsReceived;
-            public event EventHandler<ICommentViewModel> CommentReceived;
-            public event EventHandler<IMetadata> MetadataUpdated;
-            public event EventHandler CanConnectChanged;
-            public event EventHandler CanDisconnectChanged;
-
-            public Task ConnectAsync(string input, IBrowserProfile browserProfile)
-            {
-                return Task.CompletedTask;
-            }
-
-            public void Disconnect()
-            {
-            }
-
-            public Task<ICurrentUserInfo> GetCurrentUserInfo(IBrowserProfile browserProfile)
-            {
-                return Task.FromResult<ICurrentUserInfo>(null);
-            }
-
-            public IUser GetUser(string userId)
-            {
-                return null;
-            }
-
-            public Task PostCommentAsync(string text)
-            {
-                return Task.CompletedTask;
-            }
-        }
-
-        public UserControl GetCommentPostPanel(ICommentProvider commentProvider) => null;
-
-        public void Init()
-        {
-        }
-
-        public bool IsValidInput(string input) => true;
-
-        public void LoadOptions(string path, IIo io)
-        {
-        }
-
-        public void Save()
-        {
-        }
-
-        public void SaveOptions(string path, IIo io)
-        {
-        }
-    }
-    public class Connection:IConnection
-    {
         public event EventHandler<NameChangedEventArgs> NameChanged;
         public event EventHandler<CurrentSiteEventArgs> CurrentSiteChanged;
         public event EventHandler<IBrowserProfile> CurrentBrowserChanged;
         public event EventHandler<IBrowserProfile> BrowserAdded;
+        public event EventHandler<SitePluginInfo> SiteAdded;
+        public event EventHandler<Guid> SiteRemoved;
+        public event EventHandler<ICommentViewModel> CommentReceived;
+        public event EventHandler CanConnectChanged;
+        public event EventHandler CanDisconnectChanged;
+        public event EventHandler<IMetadata> MetadataUpdated;
         public string Name
         {
             get => ConnectionName2.Name;
@@ -97,47 +36,130 @@ namespace MultiCommentViewer
                 _beforeName = ConnectionName2.Name;
             }
         }
+        public ConnectionName2 ConnectionName => ConnectionName2;
         private string _beforeName;
         public Guid Guid => ConnectionName2.Guid;
 
-        private ISiteContext _selectedSite;
-        public Guid SelectedSiteGuid
+        /// <summary>
+        /// 
+        /// 直接触ってはダメ。必ずCurrentSiteGuidを経由すること
+        /// </summary>
+        private ISiteContext _currentSite;
+        /// <summary>
+        /// 
+        /// </summary>
+        public Guid CurrentSiteGuid
         {
-            get => _selectedSite.Guid;
+            get => _currentSite.Guid;
             set
             {
-                if (_selectedSite != null && _selectedSite.Guid.Equals(value))
+                if (_currentSite != null && _currentSite.Guid.Equals(value))
                 {
                     return;
                 }
-                var sitePluginInfo = _siteDitct[value];
-                _selectedSite = sitePluginInfo;
+                var before = _cp;
+                if(before != null)
+                {
+                    before.CanConnectChanged -= Cp_CanConnectChanged;
+                    before.CanDisconnectChanged -= Cp_CanDisconnectChanged;
+                    before.CommentReceived -= Cp_CommentReceived;
+                    before.MetadataUpdated -= Cp_MetadataUpdated;
+                }
+                var siteContext = GetSiteContext(value);
+                var next = siteContext.CreateCommentProvider();
+                next.CanConnectChanged += Cp_CanConnectChanged;
+                next.CanDisconnectChanged += Cp_CanDisconnectChanged;
+                next.CommentReceived += Cp_CommentReceived;
+                next.MetadataUpdated += Cp_MetadataUpdated;
+
+                _cp = next;
+                _currentSite = siteContext;
                 CurrentSiteChanged?.Invoke(this, new CurrentSiteEventArgs(Guid, value));
+                if(before?.CanConnect != next.CanConnect)
+                {
+                    CanConnectChanged?.Invoke(this, EventArgs.Empty);
+                }
+                if (before?.CanDisconnect != next.CanDisconnect)
+                {
+                    CanDisconnectChanged?.Invoke(this, EventArgs.Empty);
+                }
             }
         }
-        public event EventHandler<SitePluginInfo> SiteAdded;
-        public event EventHandler<Guid> SiteRemoved;
+
+        private void Cp_MetadataUpdated(object sender, IMetadata e)
+        {
+            MetadataUpdated?.Invoke(this, e);
+        }
+
+        private void Cp_CommentReceived(object sender, ICommentViewModel e)
+        {
+            CommentReceived?.Invoke(this, e);
+        }
+
+        private void Cp_CanDisconnectChanged(object sender, EventArgs e)
+        {
+            CanDisconnectChanged?.Invoke(this, e);
+        }
+
+        private void Cp_CanConnectChanged(object sender, EventArgs e)
+        {
+            CanConnectChanged?.Invoke(this, e);
+        }
+
+        /// <summary>
+        /// 
+        /// 直接参照してはいけない。必ずGetSiteContext()を使うこと。
+        /// </summary>
+        Dictionary<Guid, ISiteContext> _siteDitct = new Dictionary<Guid, ISiteContext>();
+        /// <summary>
+        /// SiteContextのGuidからSiteContextを取得する
+        /// </summary>
+        /// <param name="guid">SiteContextのGuid</param>
+        /// <returns></returns>
+        private ISiteContext GetSiteContext(Guid guid)
+        {
+            if (_siteDitct.Count > 0)
+            {
+                return _siteDitct[guid];
+            }
+            else
+            {
+                return _emptySiteContext;
+            }
+        }
+
         List<ISiteContext> _sites = new List<ISiteContext>();
-        public List<ISiteContext> Sites
+        public IReadOnlyList<ISiteContext> Sites
         {
             get
             {
-                //if(_siteDitct.Count > 0)
-                //{
+                if (_siteDitct.Count > 0)
+                {
                     return _sites;
-                //}
-                //else
-                //{
-                //    return new List<ISiteContext> { _emptySitePlugin };
-                //}
+                }
+                else
+                {
+                    return new List<ISiteContext> { _emptySiteContext };
+                }
             }
         }
-        Dictionary<Guid, ISiteContext> _siteDitct = new Dictionary<Guid, ISiteContext>();
+
         public void AddSiteContext(ISiteContext sitePlugin)
         {
+            if(_sites.Count == 0)
+            {
+                SiteRemoved?.Invoke(this, _emptySiteContext.Guid);
+            }
             _sites.Add(sitePlugin);
             _siteDitct.Add(sitePlugin.Guid, sitePlugin);
+
             SiteAdded?.Invoke(this, new SitePluginInfo(sitePlugin.DisplayName, sitePlugin.Guid));
+            if (_sites.Count == 1)
+            {
+                //CurrentSiteGuidを設定する前にSiteAddedを発する必要がある。そうしないと参照している側ではこのSitePluginの存在を知らない。
+                CurrentSiteGuid = sitePlugin.Guid;
+                //_selectedSite = sitePlugin;
+            }
         }
         public void AddSiteContext(List<ISiteContext> sitePlugins)
         {
@@ -153,27 +175,52 @@ namespace MultiCommentViewer
             SiteRemoved?.Invoke(this, siteContext.Guid);
         }
         List<IBrowserProfile> _browsers = new List<IBrowserProfile>();
-        public List<IBrowserProfile> Browsers
+        public IReadOnlyList<IBrowserProfile> Browsers
         {
             get
             {
-                return _browsers;
+                if(_browsers.Count > 0)
+                {
+                    return _browsers;
+                }
+                else
+                {
+                    return new List<IBrowserProfile> {_emptyBrowserProfile };
+                }
             }
         }
         public void AddBrowser(IBrowserProfile browserProfile)
         {
-            _browsers.Add(browserProfile);
-            if(_currentBrowserProfile == null)
+            try
             {
-                _currentBrowserProfile = browserProfile;
+                if (_browsers.Count == 0)
+                {
+                    //TODO:BrowserRemovedを実装する
+                    //BrowserRemoved?.Invoke(this, _emptyBrowserProfile);
+                }
+                _browsers.Add(browserProfile);
+                if (_browsers.Count == 1)
+                {
+                    _currentBrowserProfile = browserProfile;
+                }
+                BrowserAdded?.Invoke(this, browserProfile);
             }
-            BrowserAdded?.Invoke(this, browserProfile);
+            catch (Exception ex)
+            {
+                _logger.LogException(ex);
+            }
         }
         public void AddBrowser(List<IBrowserProfile> browserProfiles)
         {
-            foreach(var browser in browserProfiles)
+            try
             {
-                AddBrowser(browser);
+                foreach (var browser in browserProfiles)
+                {
+                    AddBrowser(browser);
+                }
+            }catch(Exception ex)
+            {
+                _logger.LogException(ex);
             }
         }
         IBrowserProfile _currentBrowserProfile;
@@ -209,34 +256,62 @@ namespace MultiCommentViewer
         /// <param name="isAutoSiteSelectionEnabled">入力された値を解析して最適な配信サイトを自動的に選択するか</param>
         public void SetInput(string input, bool isAutoSiteSelectionEnabled)
         {
-            if (isAutoSiteSelectionEnabled)
+            try
             {
-                foreach(var site in _sites)
+                if (isAutoSiteSelectionEnabled)
                 {
-                    var b = site.IsValidInput(input);
-                    if (b)
+                    foreach (var site in _sites)
                     {
-                        SelectedSiteGuid = site.Guid;
-                        break;
+                        var b = site.IsValidInput(input);
+                        if (b)
+                        {
+                            CurrentSiteGuid = site.Guid;
+                            break;
+                        }
                     }
                 }
+                Input = input;
+            }catch(Exception ex)
+            {
+                _logger.LogException(ex);
             }
-            Input = input;
         }
         ConnectionName2 ConnectionName2 { get; } = new ConnectionName2();
-        public bool CanConnect { get; internal set; }
-        public bool CanDisconnect { get; internal set; }
+        public bool CanConnect => _cp.CanConnect;
+        public bool CanDisconnect => _cp.CanDisconnect;
+
+        public bool NeedSave { get; set; }
 
         ICommentProvider _cp;
-        public Connection()
+        public Connection(ILogger logger)
         {
-            CanConnect = true;
-            CanDisconnect = false;
             _beforeName = ConnectionName2.Name;
+            CurrentSiteGuid = Sites[0].Guid;
+            CurrentBrowserProfile = Browsers[0];
+            _logger = logger;
         }
-    }
-    class AutoSiteSelector
-    {
 
+        public async void Connect()
+        {
+            try
+            {
+                await _cp.ConnectAsync(Input, CurrentBrowserProfile);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogException(ex);
+            }
+        }
+        public void Disconnect()
+        {
+            try
+            {
+                _cp.Disconnect();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogException(ex);
+            }
+        }
     }
 }

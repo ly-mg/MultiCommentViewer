@@ -31,5 +31,30 @@ namespace MultiCommentViewerTests
         //    conn.Name = newName;
         //    Assert.IsTrue(b);
         //}
+        [Test]
+        public void ConnectionでNameChangedが起きたらPropertyChangedが発生するか()
+        {
+            var connectionMock = new Mock<IConnection>();
+            connectionMock.SetupGet(c => c.Name).Returns("a");
+            connectionMock.SetupGet(c => c.Sites).Returns(new List<ISiteContext>());
+            var connection = connectionMock.Object;
+
+            var loggerMock = new Mock<ILogger>();
+            
+            var logger = loggerMock.Object;
+            var called = false;
+            var connectionViewModel = new ConnectionViewModel(connection, logger);
+            connectionViewModel.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(ConnectionViewModel.Name))
+                {
+                    called = true;
+                }
+            };
+            connectionMock.SetupGet(c => c.Name).Returns("b");
+            connectionMock.Raise(c => c.NameChanged += null, new NameChangedEventArgs("a", "b"));
+            Assert.IsTrue(called);
+
+        }
     }
 }

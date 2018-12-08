@@ -17,10 +17,11 @@ namespace MultiCommentViewerTests
     [TestFixture]
     class ConnectionTests
     {
+        ILogger logger = new Mock<ILogger>().Object;
         [Test]
         public void ChangeNameTest()
         {
-            var connection = new Connection();
+            var connection = new Connection(logger);
             var actualOld = "";
             var actualNew = "";
             connection.NameChanged += (s, e) =>
@@ -35,11 +36,11 @@ namespace MultiCommentViewerTests
         [Test]
         public void SetInputの第二引数にfalseを渡したらサイトの自動選択は発動しない()
         {
-            var connection = new Connection();
-            var before = connection.SelectedSiteGuid;
+            var connection = new Connection(logger);
+            var before = connection.CurrentSiteGuid;
             connection.SetInput("a", false);
             Assert.AreEqual("a", connection.Input);
-            Assert.AreEqual(before, connection.SelectedSiteGuid);
+            Assert.AreEqual(before, connection.CurrentSiteGuid);
         }
         [Test]
         public void SitePluginやBrowserProfileが登録されていない場合は代替のものを使用()
@@ -55,7 +56,7 @@ namespace MultiCommentViewerTests
             var sitepluginLoader = sitePluginLoaderMock.Object;
 
             var model = new Model(options, logger, io, sitepluginLoader);
-            Connection connection = null;
+            IConnection connection = null;
             model.ConnectionAdded += (s, e) =>
             {
                 connection = e;
@@ -75,8 +76,10 @@ namespace MultiCommentViewerTests
             var loggerMock = new Mock<ILogger>();
             var optionsMock = new Mock<IOptions>();
             optionsMock.Setup(o => o.SettingsDirPath).Returns("");
+            var commentProviderMock = new Mock<ICommentProvider>();
             var siteContextMock1 = new Mock<ISiteContext>();
             siteContextMock1.Setup(s => s.DisplayName).Returns("site1");
+            siteContextMock1.Setup(s=> s.CreateCommentProvider()).Returns(commentProviderMock.Object);
             var sitePluginLoaderMock = new Mock<ISitePluginLoader>();
             sitePluginLoaderMock.Setup(s => s.GetSiteContexts()).Returns(new List<ISiteContext>
             {
@@ -101,7 +104,7 @@ namespace MultiCommentViewerTests
             var model = modelMock.Object;
 
             model.Init();
-            Connection connection = null;
+            IConnection connection = null;
             model.ConnectionAdded += (s, e) =>
             {
                 connection = e;
@@ -121,8 +124,10 @@ namespace MultiCommentViewerTests
             var loggerMock = new Mock<ILogger>();
             var optionsMock = new Mock<IOptions>();
             optionsMock.Setup(o => o.SettingsDirPath).Returns("");
+            var commentProviderMock = new Mock<ICommentProvider>();
             var siteContextMock1 = new Mock<ISiteContext>();
             siteContextMock1.Setup(s => s.DisplayName).Returns("site1");
+            siteContextMock1.Setup(s => s.CreateCommentProvider()).Returns(commentProviderMock.Object);
             var sitePluginLoaderMock = new Mock<ISitePluginLoader>();
             sitePluginLoaderMock.Setup(s => s.GetSiteContexts()).Returns(new List<ISiteContext>
             {
@@ -145,7 +150,7 @@ namespace MultiCommentViewerTests
             var model = modelMock.Object;
 
             model.Init();
-            Connection connection = null;
+            IConnection connection = null;
             model.ConnectionAdded += (s, e) =>
             {
                 connection = e;
@@ -159,6 +164,32 @@ namespace MultiCommentViewerTests
 
             Assert.AreEqual(1, connection.Browsers.Count);
             Assert.AreEqual("browser1", connection.Browsers[0].ProfileName);
+        }
+        [Test]
+        public void sksksk()
+        {
+            var connection = new Connection(logger);
+            //connection.SelectedSiteGuid
+            Guid removedGuid=new Guid();
+            string addedSiteDisplayName = null;
+
+            connection.SiteRemoved += (s, e) =>
+            {
+                removedGuid = e;
+            };
+            connection.SiteAdded += (s, e) =>
+            {
+                addedSiteDisplayName = e.DisplayName;
+            };
+            var siteContextMock1 = new Mock<ISiteContext>();
+            siteContextMock1.Setup(s => s.DisplayName).Returns("site1");
+            var commentProviderMock = new Mock<ICommentProvider>();
+            siteContextMock1.Setup(s => s.CreateCommentProvider()).Returns(commentProviderMock.Object);
+            var siteContext = siteContextMock1.Object;
+            connection.AddSiteContext(siteContext);
+
+            Assert.AreEqual(new EmptySitePlugin().Guid, removedGuid);
+            Assert.AreEqual("site1", addedSiteDisplayName);
         }
     }
 }
