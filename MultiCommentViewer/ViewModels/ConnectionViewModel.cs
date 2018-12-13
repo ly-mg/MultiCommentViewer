@@ -45,7 +45,7 @@ namespace MultiCommentViewer
             get { return _connection.Name; }
             set { _connection.Name = value; }
         }
-        public ICommentProvider CommentProvider => _commentProvider;
+        //public ICommentProvider CommentProvider => _commentProvider;
 
         #region IsSelected
         private bool _isSelected;
@@ -63,7 +63,7 @@ namespace MultiCommentViewer
         public ObservableCollection<SiteViewModel> Sites { get; } = new ObservableCollection<SiteViewModel>();
         public ObservableCollection<BrowserViewModel> Browsers { get; } = new ObservableCollection<BrowserViewModel>();
         //private SiteViewModel _selectedSite;
-        private ICommentProvider _commentProvider = null;
+        //private ICommentProvider _commentProvider = null;
         //private readonly ConnectionName _connectionName;
         public ICommand ConnectCommand { get; }
         public ICommand DisconnectCommand { get; }
@@ -136,47 +136,48 @@ namespace MultiCommentViewer
                 //});
             }
         }
-        private async void UpdateLoggedInInfo()
-        {
-            var cp = _commentProvider;
-            if(cp == null)
-            {
-                return;
-            }
-            SitePlugin.ICurrentUserInfo currentUserInfo = null;
-            var br = SelectedBrowser;
-            if(br != null)
-            {
-                _dispatcher.Invoke(()=>
-                {
-                    LoggedInUsername = "";
-                });
-                try
-                {
-                    currentUserInfo = await cp.GetCurrentUserInfo(br.Browser);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogException(ex);
-                }
-            }
-            _dispatcher.Invoke(() =>
-            {
-                //UpdateLoggedInInfo()がasync voidだから自分より後に実行されたものが既にLoggedInUsernameをセットしている可能性がある。そのためcpとbrに変更が無いか確認する必要がある。
-                if (cp == _commentProvider && br == SelectedBrowser)
-                {
-                    if (currentUserInfo == null)
-                    {
-                        LoggedInUsername = "";
-                    }
-                    else
-                    {
-                        LoggedInUsername = currentUserInfo.IsLoggedIn ? currentUserInfo.Username : "(未ログイン)";
-                    }
-                }
+        //private void UpdateLoggedInInfo()
+        //{
+            //_connection.
+            //var cp = _commentProvider;
+            //if(cp == null)
+            //{
+            //    return;
+            //}
+            //SitePlugin.ICurrentUserInfo currentUserInfo = null;
+            //var br = SelectedBrowser;
+            //if(br != null)
+            //{
+            //    _dispatcher.Invoke(()=>
+            //    {
+            //        LoggedInUsername = "";
+            //    });
+            //    try
+            //    {
+            //        currentUserInfo = await cp.GetCurrentUserInfo(br.Browser);
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        _logger.LogException(ex);
+            //    }
+            //}
+            //_dispatcher.Invoke(() =>
+            //{
+            //    //UpdateLoggedInInfo()がasync voidだから自分より後に実行されたものが既にLoggedInUsernameをセットしている可能性がある。そのためcpとbrに変更が無いか確認する必要がある。
+            //    if (cp == _commentProvider && br == SelectedBrowser)
+            //    {
+            //        if (currentUserInfo == null)
+            //        {
+            //            LoggedInUsername = "";
+            //        }
+            //        else
+            //        {
+            //            LoggedInUsername = currentUserInfo.IsLoggedIn ? currentUserInfo.Username : "(未ログイン)";
+            //        }
+            //    }
 
-            });
-        }
+            //});
+        //}
         /// <summary>
         /// 配信者のユーザIDとかコミュニティIDのような毎回そこからリアルタイムの配信に接続できる文字列であるか
         /// 配信IDだと毎回変わるため保存しても無意味。

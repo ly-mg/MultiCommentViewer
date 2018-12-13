@@ -22,6 +22,8 @@ namespace MultiCommentViewer
         public event EventHandler CanConnectChanged;
         public event EventHandler CanDisconnectChanged;
         public event EventHandler<IMetadata> MetadataUpdated;
+        public event EventHandler LoggedInUserInfoChanged;
+
         public string Name
         {
             get => ConnectionName2.Name;
@@ -36,6 +38,10 @@ namespace MultiCommentViewer
                 _beforeName = ConnectionName2.Name;
             }
         }
+        /// <summary>
+        /// 現在ログインしているユーザの名前
+        /// </summary>
+        public string LoggedInUserInfo { get; private set; }
         public ConnectionName2 ConnectionName => ConnectionName2;
         private string _beforeName;
         public Guid Guid => ConnectionName2.Guid;
@@ -84,6 +90,23 @@ namespace MultiCommentViewer
                     CanDisconnectChanged?.Invoke(this, EventArgs.Empty);
                 }
             }
+        }
+        private async void UpdateLoggedInUserInfo()
+        {
+            if(_cp == null || CurrentBrowserProfile == null)
+            {
+                return;
+            }
+            var userInfo = await _cp.GetCurrentUserInfo(CurrentBrowserProfile);
+            if (userInfo.IsLoggedIn)
+            {
+                LoggedInUserInfo = userInfo.Username;
+            }
+            else
+            {
+                LoggedInUserInfo = "(未ログイン)";
+            }
+            LoggedInUserInfoChanged?.Invoke(this, EventArgs.Empty);
         }
 
         private void Cp_MetadataUpdated(object sender, IMetadata e)

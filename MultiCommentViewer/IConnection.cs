@@ -17,6 +17,7 @@ namespace MultiCommentViewer
         event EventHandler CanConnectChanged;
         event EventHandler CanDisconnectChanged;
         event EventHandler<IMetadata> MetadataUpdated;
+        event EventHandler LoggedInUserInfoChanged;
 
         Guid Guid { get; }
         bool CanConnect { get; }
@@ -35,6 +36,7 @@ namespace MultiCommentViewer
         Guid CurrentSiteGuid { get; set; }
         string Name { get; set; }
         bool NeedSave { get; set; }
+        string LoggedInUserInfo { get; }
         IBrowserProfile CurrentBrowserProfile { get; set; }
         IReadOnlyList<ISiteContext> Sites { get; }
         IReadOnlyList<IBrowserProfile> Browsers { get; }
