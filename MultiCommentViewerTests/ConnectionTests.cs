@@ -49,13 +49,15 @@ namespace MultiCommentViewerTests
             var loggerMock = new Mock<ILogger>();
             var optionsMock = new Mock<IOptions>();
             var sitePluginLoaderMock = new Mock<ISitePluginLoader>();
+            var pluginManagerMock = new Mock<IPluginManager>();
 
             var options = optionsMock.Object;
             var logger = loggerMock.Object;
             var io = ioMock.Object;
             var sitepluginLoader = sitePluginLoaderMock.Object;
+            var pluginManager = pluginManagerMock.Object;
 
-            var model = new Model(options, logger, io, sitepluginLoader);
+            var model = new Model(options, logger, io, sitepluginLoader, pluginManager);
             IConnection connection = null;
             model.ConnectionAdded += (s, e) =>
             {
@@ -85,6 +87,7 @@ namespace MultiCommentViewerTests
             {
                 siteContextMock1.Object,
             });
+            var pluginManagerMock = new Mock<IPluginManager>();
             var browserProfileMock = new Mock<IBrowserProfile>();
             browserProfileMock.Setup(b => b.ProfileName).Returns("browser1");
             var browserLoaderMock = new Mock<IBrowserLoader>();
@@ -97,9 +100,10 @@ namespace MultiCommentViewerTests
             var logger = loggerMock.Object;
             var io = ioMock.Object;
             var sitepluginLoader = sitePluginLoaderMock.Object;
+            var pluginManager = pluginManagerMock.Object;
             var browserLoader = browserLoaderMock.Object;
 
-            var modelMock = new Mock<Model>(options, logger, io, sitepluginLoader) { CallBase = true };
+            var modelMock = new Mock<Model>(options, logger, io, sitepluginLoader, pluginManager) { CallBase = true };
             modelMock.Protected().Setup<IBrowserLoader>("CreateBrowserLoader").Returns(browserLoader);
             var model = modelMock.Object;
 
@@ -132,6 +136,7 @@ namespace MultiCommentViewerTests
             sitePluginLoaderMock.Setup(s => s.GetSiteContexts()).Returns(new List<ISiteContext>
             {
             });
+            var pluginManagerMock = new Mock<IPluginManager>();
             var browserProfileMock = new Mock<IBrowserProfile>();
             browserProfileMock.Setup(b => b.ProfileName).Returns("browser1");
             var browserLoaderMock = new Mock<IBrowserLoader>();
@@ -143,9 +148,10 @@ namespace MultiCommentViewerTests
             var logger = loggerMock.Object;
             var io = ioMock.Object;
             var sitepluginLoader = sitePluginLoaderMock.Object;
+            var pluginManager = pluginManagerMock.Object;
             var browserLoader = browserLoaderMock.Object;
 
-            var modelMock = new Mock<Model>(options, logger, io, sitepluginLoader) { CallBase = true };
+            var modelMock = new Mock<Model>(options, logger, io, sitepluginLoader, pluginManager) { CallBase = true };
             modelMock.Protected().Setup<IBrowserLoader>("CreateBrowserLoader").Returns(browserLoader);
             var model = modelMock.Object;
 

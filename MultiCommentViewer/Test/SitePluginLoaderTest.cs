@@ -71,15 +71,16 @@ namespace MultiCommentViewer.Test
             return site.GetCommentPostPanel(commentProvider);
         }
 
-        //public ISiteContext GetSiteIContext(Guid guid)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
         public void LoadSiteOptions(Guid guid, string path, IIo io)
         {
             var siteContext = GetSiteContext(guid);
             siteContext.LoadOptions(path, io);
+        }
+
+        public IOptionsTabPage GetOptionsTabPage(Guid siteContextGuid)
+        {
+            var siteContext = GetSiteContext(siteContextGuid);
+            return siteContext.TabPanel;
         }
     }
 }

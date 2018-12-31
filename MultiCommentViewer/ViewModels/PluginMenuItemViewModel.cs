@@ -8,6 +8,28 @@ using System.Diagnostics;
 
 namespace MultiCommentViewer
 {
+    public class PluginMenuItemPushedEventArgs : EventArgs
+    {
+        public string Name { get; }
+        public PluginMenuItemPushedEventArgs(string name)
+        {
+            Name = name;
+        }
+    }
+    public class PluginMenuItemViewModel2 : ViewModelBase
+    {
+        public event EventHandler<PluginMenuItemPushedEventArgs> Pushed;
+        public ICommand PushCommand { get; }
+        public string Name { get; set; }
+        public PluginMenuItemViewModel2(string name)
+        {
+            Name = name;
+            PushCommand = new RelayCommand(() =>
+            {
+                Pushed?.Invoke(this, new PluginMenuItemPushedEventArgs(Name));
+            });
+        }
+    }
     public class PluginMenuItemViewModel:ViewModelBase
     {
         public string Name { get; set; }

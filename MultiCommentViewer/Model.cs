@@ -1,10 +1,12 @@
 ﻿using CommentViewerCommon;
 using Common;
+using Plugin;
 using ryu_s.BrowserCookie;
 using SitePlugin;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -55,8 +57,25 @@ namespace MultiCommentViewer
         void SaveSitePluginOptions();
         void SetInput(object connection, string value);
         void AddConnection();
-
-
+        void PostCommentToAll(string comment);
+    }
+    public class PluginAddedEventArgs : EventArgs
+    {
+        public string PluginName { get; }
+        public PluginAddedEventArgs(string pluginName)
+        {
+            PluginName = pluginName;
+        }
+    }
+    public class UpdateFoundEventArgs : EventArgs
+    {
+        public Version NewVersion { get; }
+        public Version CurrentVersion { get; }
+        public UpdateFoundEventArgs(Version currentVersion, Version newVersion)
+        {
+            CurrentVersion = currentVersion;
+            NewVersion = newVersion;
+        }
     }
     public class Model
     {
@@ -77,10 +96,10 @@ namespace MultiCommentViewer
             return path;
         }
 
-        public void Init()
+        public async void Init()
         {
             //サイトプラグインを読み込む
-             _sitePluginLoader.LoadSitePlugins(_options, _logger);
+            _sitePluginLoader.LoadSitePlugins(_options, _logger);
             var xs = _sitePluginLoader.GetSiteContexts();
             foreach (var sitePluginInfo in xs)
             {
@@ -106,7 +125,7 @@ namespace MultiCommentViewer
             var browsers = browserLoader.LoadBrowsers();
             if (browsers.Count() > 0)
             {
-                foreach(var browser in browsers)
+                foreach (var browser in browsers)
                 {
                     //if(_defaultBrowser == null)
                     //{
@@ -122,14 +141,61 @@ namespace MultiCommentViewer
             }
 
             //プラグインを読み込む
+            //_pluginManager = new PluginManager(_options);
+            _pluginManager.PluginAdded += PluginManager_PluginAdded;
+            _pluginManager.LoadPlugins(new PluginHost2(this));
 
+            _pluginManager.OnLoaded();
 
             //Connectionを読み込む
 
 
-            //アップデートチェック
 
+            //アップデートチェック
+            await GetLatestVersion("MultiCommentViewer");
+            InitializeEnded?.Invoke(this, EventArgs.Empty);
         }
+        public event EventHandler InitializeEnded;
+        private async Task GetLatestVersion(string name)
+        {
+            name = name.ToLower();
+            //APIが確定するまでアダプタを置いている。ここから本当のAPIを取得する。
+            var permUrl = @"https://ryu-s.github.io/" + name + "_latest";
+
+            var wc = new WebClient();
+            var api = await wc.DownloadStringTaskAsync(permUrl);
+
+            var jsonStr = await wc.DownloadStringTaskAsync(api);
+            var json = Newtonsoft.Json.JsonConvert.DeserializeObject<VersionInfo>(jsonStr);
+
+            var asm = System.Reflection.Assembly.GetExecutingAssembly();
+            var ver = asm.GetName().Version;
+            return new LatestVersionInfo(json.Version, json.Url);
+        }
+
+        private void PluginManager_PluginAdded(object sender, IPlugin e)
+        {
+            PluginAdded?.Invoke(this, new PluginAddedEventArgs(e.Name));
+        }
+        public event EventHandler<PluginAddedEventArgs> PluginAdded;
+        public event EventHandler<UpdateFoundEventArgs> UpdateFound;
+        public event EventHandler UpdateProgress;
+
+        public void Update()
+        {
+            var wc = new WebClient();
+            DownloadProgressChangedEventHandler p = (s, e) =>
+            {
+                var bytesReceived = e.BytesReceived;
+                var totalBytesToReceive = e.TotalBytesToReceive;
+                var progressPercentage = e.ProgressPercentage;
+            };
+            wc.DownloadProgressChanged += p;
+
+
+            wc.DownloadProgressChanged -= p;
+        }
+
         public Guid GetSelectedSite(Guid connectionGuid)
         {
             var connection = GetConnection(connectionGuid);
@@ -139,7 +205,7 @@ namespace MultiCommentViewer
         internal void AddBrowserProfile(IBrowserProfile browserProfile)
         {
             _browserProfiles.Add(browserProfile);
-            foreach(var connection in _Connections)
+            foreach (var connection in _Connections)
             {
                 connection.AddBrowser(browserProfile);
             }
@@ -182,7 +248,7 @@ namespace MultiCommentViewer
 
         private IConnection GetConnection(Guid guid1)
         {
-            foreach(var connection in _Connections)
+            foreach (var connection in _Connections)
             {
                 if (connection.Guid.Equals(guid1))
                 {
@@ -192,7 +258,7 @@ namespace MultiCommentViewer
             //guidは必ず一致するものが無ければならない。無ければバグ
             throw new BugException("")
             {
-                 Details = $"guid={guid1}",
+                Details = $"guid={guid1}",
             };
         }
 
@@ -203,12 +269,20 @@ namespace MultiCommentViewer
 
         public IOptionsTabPage GetSitePluginTabPanel(Guid siteContextGuid)
         {
-            throw new NotImplementedException();
+            var tabPanel = _sitePluginLoader.GetOptionsTabPage(siteContextGuid);
+            return tabPanel;
         }
 
         public void SaveSitePluginOptions()
         {
-            throw new NotImplementedException();
+            try
+            {
+                _sitePluginLoader.Save();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogException(ex);
+            }
         }
         private string GetDefaultName(IEnumerable<string> existingNames)
         {
@@ -225,7 +299,7 @@ namespace MultiCommentViewer
         {
             var name = GetDefaultName(_Connections.Select(c => c.Name));
             SitePluginInfo sitePluginInfo;
-            if(_sitePlugins.Count == 0)
+            if (_sitePlugins.Count == 0)
             {
                 sitePluginInfo = null;
             }
@@ -235,7 +309,7 @@ namespace MultiCommentViewer
             }
 
             IBrowserProfile browser;
-            if(_browserProfiles.Count == 0)
+            if (_browserProfiles.Count == 0)
             {
                 browser = null;
             }
@@ -267,7 +341,7 @@ namespace MultiCommentViewer
         {
             var connection = new Connection(_logger)
             {
-                Name=name,
+                Name = name,
             };
             connection.CommentReceived += Connection_CommentReceived;
             connection.MetadataUpdated += Connection_MetadataUpdated;
@@ -278,15 +352,15 @@ namespace MultiCommentViewer
             {
                 connection.AddSiteContext(_sitePlugins);
             }
-            if(_browserProfiles.Count > 0)
+            if (_browserProfiles.Count > 0)
             {
                 connection.AddBrowser(_browserProfiles);
             }
-            
+
             IBrowserProfile browserProfile = null;
-            foreach(var browser in _browserProfiles)
+            foreach (var browser in _browserProfiles)
             {
-                if(GetBrowserDisplayName(browser) == browserName)
+                if (GetBrowserDisplayName(browser) == browserName)
                 {
                     browserProfile = browser;
                     break;
@@ -338,23 +412,54 @@ namespace MultiCommentViewer
         protected virtual List<IConnection> _Connections { get; } = new List<IConnection>();
         public IReadOnlyList<IConnection> Connections => _Connections;
 
-        public Model(IOptions options, ILogger logger, IIo io, ISitePluginLoader sitePluginLoader)
+        public Model(IOptions options, ILogger logger, IIo io, ISitePluginLoader sitePluginLoader, IPluginManager pluginManager)
         {
             _options = options;
             _logger = logger;
             _io = io;
             _sitePluginLoader = sitePluginLoader;
+            _pluginManager = pluginManager;
         }
 
         private readonly IOptions _options;
         private readonly ILogger _logger;
         private readonly IIo _io;
         private readonly ISitePluginLoader _sitePluginLoader;
+        private readonly IPluginManager _pluginManager;
 
         private List<ISiteContext> _sitePlugins { get; } = new List<ISiteContext>();
         public IReadOnlyList<ISiteContext> SitePlugins => _sitePlugins;
         private List<IBrowserProfile> _browserProfiles { get; } = new List<IBrowserProfile>();
         public IReadOnlyList<IBrowserProfile> BrowserProfiles => _browserProfiles;
+
+        public double MainViewTop
+        {
+            get => _options.MainViewTop;
+            set
+            {
+                _options.MainViewTop = value;
+            }
+        }
+        public bool IsTopmost { get; internal set; }
+        public double MainViewLeft
+        {
+            get => _options.MainViewLeft;
+            set
+            {
+                _options.MainViewLeft = value;
+            }
+        }
+        public string SettingsDirPath
+        {
+            get
+            {
+                return _options.SettingsDirPath;
+            }
+            set
+            {
+                _options.SettingsDirPath = value;
+            }
+        }
 
         public string GetInput(Guid guid)
         {
@@ -368,6 +473,37 @@ namespace MultiCommentViewer
             return connection.Name;
         }
 
+        internal void PostComment(string guid, string comment)
+        {
+            throw new NotImplementedException();
+        }
 
+        internal void PostCommentToAll(string comment)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal void SavePluginOptions(string path, string s)
+        {
+            _io.WriteFile(path, s);
+        }
+
+        internal string LoadPluginOptions(string path)
+        {
+            var s = _io.ReadFile(path);
+            return s;
+        }
+
+        internal void ShowSettingView(string pluginName)
+        {
+            try
+            {
+                _pluginManager.ShowSettingView(pluginName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogException(ex);
+            }
+        }
     }
 }

@@ -88,7 +88,7 @@ namespace MultiCommentViewer
         #endregion //Commands
 
         #region Fields
-        private readonly Dictionary<IPlugin, PluginMenuItemViewModel> _pluginMenuItemDict = new Dictionary<IPlugin, PluginMenuItemViewModel>();
+        private readonly Dictionary<string, PluginMenuItemViewModel2> _pluginMenuItemDict = new Dictionary<string, PluginMenuItemViewModel2>();
         private readonly Model _model;
         private readonly ILogger _logger;
         private IPluginManager _pluginManager;
@@ -199,11 +199,11 @@ namespace MultiCommentViewer
                 //}
                 _model.Init();
 
-                _pluginManager = new PluginManager(_options);
-                _pluginManager.PluginAdded += PluginManager_PluginAdded;
-                _pluginManager.LoadPlugins(new PluginHost(this, _options, _io, _logger));
+                //_pluginManager = new PluginManager(_options);
+                //_pluginManager.PluginAdded += PluginManager_PluginAdded;
+                //_pluginManager.LoadPlugins(new PluginHost(this, _options, _io, _logger));
 
-                _pluginManager.OnLoaded();
+                //_pluginManager.OnLoaded();
 
                 var connectionSerializerList = _connectionSerializerLoader.Load();
                 foreach (var serializer in connectionSerializerList)
@@ -560,7 +560,7 @@ namespace MultiCommentViewer
 
         #region Properties
         public ObservableCollection<MetadataViewModel> MetaCollection { get; } = new ObservableCollection<MetadataViewModel>();
-        public ObservableCollection<PluginMenuItemViewModel> PluginMenuItemCollection { get; } = new ObservableCollection<PluginMenuItemViewModel>();
+        public ObservableCollection<PluginMenuItemViewModel2> PluginMenuItemCollection { get; } = new ObservableCollection<PluginMenuItemViewModel2>();
         private readonly ObservableCollection<McvCommentViewModel> _comments = new ObservableCollection<McvCommentViewModel>();
         public ICollectionView Comments { get; }
         public ObservableCollection<ConnectionViewModel> Connections { get; } = new ObservableCollection<ConnectionViewModel>();
@@ -826,6 +826,7 @@ namespace MultiCommentViewer
             model.ConnectionAdded += Model_ConnectionAdded;
             model.CommentReceived += Model_CommentReceived;
             model.MetadataUpdated += Model_MetadataUpdated;
+            model.PluginAdded += Model_PluginAdded;
             _logger = logger;
             //_browserVms = new List<BrowserViewModel>();
 
@@ -889,6 +890,21 @@ namespace MultiCommentViewer
             RaisePropertyChanged(nameof(Topmost));
         }
 
+        private void Model_PluginAdded(object sender, PluginAddedEventArgs e)
+        {
+            var pluginName = e.PluginName;
+            var vm = new PluginMenuItemViewModel2(pluginName);
+            vm.Pushed += Vm_Pushed;
+            _pluginMenuItemDict.Add(pluginName, vm);
+            PluginMenuItemCollection.Add(vm);
+        }
+
+        private void Vm_Pushed(object sender, PluginMenuItemPushedEventArgs e)
+        {
+            var pluginName = e.Name;
+            _model.ShowSettingView(pluginName);
+        }
+
         private void Model_MetadataUpdated(object sender, MetadataUpdatedEventArgs e)
         {
             var connectionName = e.ConnectionName;
@@ -937,22 +953,22 @@ namespace MultiCommentViewer
         //    _browserVms.Add(new BrowserViewModel(e));
         //}
 
-        private async void PluginManager_PluginAdded(object sender, IPlugin e)
-        {
-            try
-            {
-                await _dispatcher.BeginInvoke((Action)(() =>
-                {
-                    var vm = new PluginMenuItemViewModel(e);
-                    _pluginMenuItemDict.Add(e, vm);
-                    PluginMenuItemCollection.Add(vm);
-                }), DispatcherPriority.Normal);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogException(ex);
-            }
-        }
+        //private async void PluginManager_PluginAdded(object sender, IPlugin e)
+        //{
+        //    try
+        //    {
+        //        await _dispatcher.BeginInvoke((Action)(() =>
+        //        {
+        //            var vm = new PluginMenuItemViewModel(e);
+        //            _pluginMenuItemDict.Add(e, vm);
+        //            PluginMenuItemCollection.Add(vm);
+        //        }), DispatcherPriority.Normal);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogException(ex);
+        //    }
+        //}
 
         private void ShowUserInfo()
         {

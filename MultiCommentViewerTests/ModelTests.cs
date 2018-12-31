@@ -36,6 +36,7 @@ namespace MultiCommentViewerTests
         Mock<ILogger> _loggerMock = new Mock<ILogger>();
         Mock<IIo> _ioMock = new Mock<IIo>();
         Mock<ISitePluginLoader> _sitePluginLoaderMock = new Mock<ISitePluginLoader>();
+        Mock<IPluginManager> _pluginManagerMock = new Mock<IPluginManager>();
         Mock<IBrowserLoader> _browserLoaderMock = new Mock<IBrowserLoader>();
         [SetUp]
         public void Setup()
@@ -56,7 +57,7 @@ namespace MultiCommentViewerTests
         }
         public IConnection Test(string profileName)
         {
-            var modelMock = new Mock<Model>(_optionsMock.Object, _loggerMock.Object, _ioMock.Object, _sitePluginLoaderMock.Object) { CallBase = true };
+            var modelMock = new Mock<Model>(_optionsMock.Object, _loggerMock.Object, _ioMock.Object, _sitePluginLoaderMock.Object, _pluginManagerMock.Object) { CallBase = true };
 
             var browserMockB = new Mock<IBrowserProfile>();
             browserMockB.Setup(b => b.ProfileName).Returns("b");

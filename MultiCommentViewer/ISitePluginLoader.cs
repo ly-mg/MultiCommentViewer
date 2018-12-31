@@ -23,6 +23,7 @@ namespace MultiCommentViewer
         Guid GetValidSiteGuid(string input);
         System.Windows.Controls.UserControl GetCommentPostPanel(Guid guid, ICommentProvider commentProvider);
         void LoadSiteOptions(Guid guid, string path, IIo io);
+        IOptionsTabPage GetOptionsTabPage(Guid siteContextGuid);
     }
     public class SitePluginInfo
     {

@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using MultiCommentViewer.Test;
+using SitePlugin;
+
 namespace MultiCommentViewer
 {
     class Program
@@ -45,6 +47,7 @@ namespace MultiCommentViewer
                 await t;
             }catch(Exception ex)
             {
+                _logger.LogException(ex);
                 Debug.WriteLine(ex.Message);
             }
         }
@@ -53,10 +56,8 @@ namespace MultiCommentViewer
             var currentDir = Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName;
             return Path.Combine(currentDir, "settings", "options.txt");
         }
-        public async Task StartAsync()
+        private void LoadOptions(IIo io, DynamicOptionsTest options)
         {
-            var io = new IOTest();
-            var options = new DynamicOptionsTest();
             try
             {
                 var s = io.ReadFile(GetOptionsPath());
@@ -66,7 +67,14 @@ namespace MultiCommentViewer
             {
                 _logger.LogException(ex);
             }
-            var model = new Model(options, _logger, io, new SitePluginLoaderTest());
+        }
+        public async Task StartAsync()
+        {
+            var io = new IOTest();
+            var options = new DynamicOptionsTest();
+            LoadOptions(io, options);
+
+            var model = new Model(options, _logger, io, new SitePluginLoaderTest(), new PluginManager2(options));
             IMainViewModel viewModel = new MainViewModel(model, _logger,options);
             viewModel.CloseRequested += ViewModel_CloseRequested;
 

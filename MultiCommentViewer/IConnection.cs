@@ -5,6 +5,11 @@ using System.Collections.Generic;
 
 namespace MultiCommentViewer
 {
+    public interface IPostingComment
+    {
+        string Comment { get; }
+    }
+
     public interface IConnection
     {
         event EventHandler<NameChangedEventArgs> NameChanged;
@@ -42,5 +47,7 @@ namespace MultiCommentViewer
         IReadOnlyList<IBrowserProfile> Browsers { get; }
         void AddBrowser(IBrowserProfile browserProfile);
         void AddSiteContext(ISiteContext sitePlugin);
+
+        void PostComment(IPostingComment postingComment);
     }
 }

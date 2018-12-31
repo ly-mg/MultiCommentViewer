@@ -9,25 +9,27 @@ using System.Diagnostics;
 using System.Linq;
 using System.IO;
 using System.ComponentModel.Composition.Primitives;
+using System.Windows.Controls;
 
 namespace MultiCommentViewer
 {
     public interface IPluginManager
     {
         event EventHandler<IPlugin> PluginAdded;
-        void LoadPlugins(IPluginHost host);
+        void LoadPlugins(IPluginHost2 host);
         void SetComments(ICommentViewModel comments);
         void OnLoaded();
         void OnClosing();
+        void ShowSettingView(string pluginName);
         //event EventHandler<string> PostingCommentReceived;
     }
-    public class PluginManager : IPluginManager
+    public class PluginManager2 : IPluginManager
     {
         public event EventHandler<IPlugin> PluginAdded;
         //public event EventHandler<IPlugin> PluginRemoved;
 
         private IEnumerable<IPlugin> _plugins;
-        public void LoadPlugins(IPluginHost host)
+        public void LoadPlugins(IPluginHost2 host)
         {
             var dir = _options.PluginDir;
             var pluginDirs = Directory.GetDirectories(dir);
@@ -72,7 +74,7 @@ namespace MultiCommentViewer
                 ThumbnailUrl = comment.Thumbnail?.Url,
                 ThumbnailWidth = comment.Thumbnail?.Width ?? 50,
                 ThumbnailHeight = comment.Thumbnail?.Height ?? 50,
-                Is184=comment.Is184,
+                Is184 = comment.Is184,
             };
             foreach (var plugin in _plugins)
             {
@@ -85,10 +87,6 @@ namespace MultiCommentViewer
             var textItems = items.Where(s => s is IMessageText).Cast<IMessageText>().Select(s => s.Text);
             var message = string.Join("", textItems);
             return message;
-        }
-        public void ShowSettingsView()
-        {
-
         }
         public void OnLoaded()
         {
@@ -132,9 +130,25 @@ namespace MultiCommentViewer
                 }
             }
         }
+        public IPlugin GetPlugin(string pluginName)
+        {
+            foreach(var plugin in _plugins)
+            {
+                if (plugin.Name == pluginName)
+                {
+                    return plugin;
+                }
+            }
+            return null;
+        }
+        public void ShowSettingView(string pluginName)
+        {
+            var plugin = GetPlugin(pluginName);
+            plugin.ShowSettingView();
+        }
 
         private readonly IOptions _options;
-        public PluginManager(IOptions options)
+        public PluginManager2(IOptions options)
         {
             _options = options;
         }
