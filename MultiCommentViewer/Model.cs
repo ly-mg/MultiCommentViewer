@@ -10,8 +10,29 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
+namespace MultiCommentViewer.LowObject
+{
+    class VersionInfoLow
+    {
+        public string Name { get; set; }
+        public string Version { get; set; }
+        public string Url { get; set; }
+    }
+}
 namespace MultiCommentViewer
 {
+    class VersionInfo
+    {
+        public string Name { get; }
+        public Version Version { get; }
+        public string Url { get; }
+        public VersionInfo(LowObject.VersionInfoLow low)
+        {
+            Name = low.Name;
+            Version = new Version(low.Version);
+            Url = low.Url;
+        }
+    }
     public interface IModel
     {
         //2018/11/26記
@@ -77,6 +98,7 @@ namespace MultiCommentViewer
             NewVersion = newVersion;
         }
     }
+
     public class Model
     {
         public event EventHandler<SitePluginInfo> SitePluginLoaded;
@@ -96,8 +118,18 @@ namespace MultiCommentViewer
             return path;
         }
 
+        /// <summary>
+        /// 初期化中か
+        /// </summary>
+        bool _isInitializing = false;
+        /// <summary>
+        /// 初期化済みか
+        /// </summary>
+        bool _isInitialized = false;
         public async void Init()
         {
+            _isInitializing = true;
+
             //サイトプラグインを読み込む
             _sitePluginLoader.LoadSitePlugins(_options, _logger);
             var xs = _sitePluginLoader.GetSiteContexts();
@@ -152,25 +184,54 @@ namespace MultiCommentViewer
 
 
             //アップデートチェック
-            await GetLatestVersion("MultiCommentViewer");
+            var latestVersion = await GetLatestVersion("MultiCommentViewer");
+            var asm = System.Reflection.Assembly.GetExecutingAssembly();
+            var currentVersion = asm.GetName().Version;
+
+            var canUpdate = CanUpdate(currentVersion, latestVersion);
+            UpdateFound?.Invoke(this, new UpdateFoundEventArgs(currentVersion, latestVersion.Version));
+
+
+            _isInitializing = false;
+            _isInitialized = true;
             InitializeEnded?.Invoke(this, EventArgs.Empty);
         }
+        public void CancelUpdate()
+        {
+
+        }
+        public void DoUpdate()
+        {
+
+        }
+        enum UpdateState
+        {
+            None,
+
+        }
+
+        private bool CanUpdate(Version currentVersion, VersionInfo latestVersion)
+        {
+            return currentVersion < latestVersion.Version;
+        }
+
         public event EventHandler InitializeEnded;
-        private async Task GetLatestVersion(string name)
+        private async Task<VersionInfo> GetLatestVersion(string name)
         {
             name = name.ToLower();
             //APIが確定するまでアダプタを置いている。ここから本当のAPIを取得する。
             var permUrl = @"https://ryu-s.github.io/" + name + "_latest";
 
             var wc = new WebClient();
-            var api = await wc.DownloadStringTaskAsync(permUrl);
+            var apiUrl = await wc.DownloadStringTaskAsync(permUrl);
 
-            var jsonStr = await wc.DownloadStringTaskAsync(api);
-            var json = Newtonsoft.Json.JsonConvert.DeserializeObject<VersionInfo>(jsonStr);
+            var jsonStr = await wc.DownloadStringTaskAsync(apiUrl);
+            var versionInfoLow = Newtonsoft.Json.JsonConvert.DeserializeObject<LowObject.VersionInfoLow>(jsonStr);
 
-            var asm = System.Reflection.Assembly.GetExecutingAssembly();
-            var ver = asm.GetName().Version;
-            return new LatestVersionInfo(json.Version, json.Url);
+            //var asm = System.Reflection.Assembly.GetExecutingAssembly();
+            //var ver = asm.GetName().Version;
+            //return new LatestVersionInfo(json.Version, json.Url);
+            return new VersionInfo(versionInfoLow);
         }
 
         private void PluginManager_PluginAdded(object sender, IPlugin e)
@@ -184,12 +245,12 @@ namespace MultiCommentViewer
         public void Update()
         {
             var wc = new WebClient();
-            DownloadProgressChangedEventHandler p = (s, e) =>
+            void p(object s, DownloadProgressChangedEventArgs e)
             {
                 var bytesReceived = e.BytesReceived;
                 var totalBytesToReceive = e.TotalBytesToReceive;
                 var progressPercentage = e.ProgressPercentage;
-            };
+            }
             wc.DownloadProgressChanged += p;
 
 

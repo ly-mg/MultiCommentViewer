@@ -60,8 +60,12 @@ namespace MultiCommentViewer
         {
             try
             {
-                var s = io.ReadFile(GetOptionsPath());
-                options.Deserialize(s);
+                var path = GetOptionsPath();
+                if (System.IO.File.Exists(path))
+                {
+                    var s = io.ReadFile(path);
+                    options.Deserialize(s);
+                }
             }
             catch (Exception ex)
             {
@@ -83,7 +87,7 @@ namespace MultiCommentViewer
                 viewModel.RequestClose();
             }
 
-            SplashScreen splashScreen = new SplashScreen();  //not disposable, but I'm keeping the same structure
+            var splashScreen = new SplashScreen();  //not disposable, but I'm keeping the same structure
             {
                 splashScreen.Closed += windowClosed; //if user closes splash screen, let's quit
                 splashScreen.Show();
@@ -91,6 +95,7 @@ namespace MultiCommentViewer
                 await viewModel.InitializeAsync();
 
                 var mainForm = new MainWindow();
+                Application.Current.MainWindow = mainForm;
                 mainForm.Closed += windowClosed;
                 mainForm.DataContext = viewModel;
                 mainForm.Show();

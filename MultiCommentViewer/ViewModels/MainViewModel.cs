@@ -925,10 +925,14 @@ namespace MultiCommentViewer
 
         private async void Model_CommentReceived(object sender, CommentReceivedEventArgs e)
         {
-            await _dispatcher.BeginInvoke((Action)(() =>
+            try
             {
-                AddComment(e.CommentContext, e.ConnectionName);
-            }), DispatcherPriority.Normal);
+                await _dispatcher.BeginInvoke((Action)(() =>
+                {
+                    AddComment(e.CommentContext, e.ConnectionName);
+                }), DispatcherPriority.Normal);
+            }
+            catch (TaskCanceledException) { }
         }
 
         private void Model_ConnectionAdded(object sender, IConnection e)
